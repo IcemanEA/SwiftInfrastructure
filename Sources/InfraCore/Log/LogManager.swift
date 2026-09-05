@@ -5,7 +5,7 @@
 //  Created by Egor Ledkov on 17.06.2025.
 //
 
-public final class LogManager {
+public final class LogManager: Sendable {
 	private let logger: ILogger
 	private let category: LogCategory
 	

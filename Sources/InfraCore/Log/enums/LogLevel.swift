@@ -29,7 +29,7 @@ import os.log
 /// let logger = Logger(minimumLogLevel: .warning, /* ... */)
 /// // Only warning, error, and critical messages will be recorded.
 /// ```
-public enum LogLevel: String, CaseIterable {
+public enum LogLevel: String, CaseIterable, Sendable {
 	/// Maximum-detail information for deep debugging.
 	///
 	/// Use to record detailed execution traces, variable values, intermediate

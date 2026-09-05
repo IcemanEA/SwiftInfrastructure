@@ -15,7 +15,12 @@ public final class Logger: ILogger {
 	private let minimumLogLevel: LogLevel
 	private let enableConsoleLogging: Bool
 	private let enableOSLogging: Bool
-	private let dateFormatter: DateFormatter
+	/// Value-type timestamp formatter.
+	///
+	/// Deliberately not a `DateFormatter`: `createLogEntry` runs on the caller's thread,
+	/// so a shared reference-type formatter is entered concurrently by every logging
+	/// actor and queue in the host app, which corrupts its internal buffers.
+	private let timestampStyle: Date.VerbatimFormatStyle
 	private let logQueue: DispatchQueue
 	private let subsystemPrefix: String
 	private let exceptCategory: Set<LogCategory>
@@ -36,9 +41,12 @@ public final class Logger: ILogger {
 		self.subsystemPrefix = subsystemPrefix
 		self.exceptCategory = exceptCategory
 
-		self.dateFormatter = DateFormatter()
-		self.dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss.SSS"
-		self.dateFormatter.locale = Locale(identifier: "en_US_POSIX")
+		self.timestampStyle = Date.VerbatimFormatStyle(
+			format: "\(year: .padded(4))-\(month: .twoDigits)-\(day: .twoDigits) \(hour: .twoDigits(clock: .twentyFourHour, hourCycle: .zeroBased)):\(minute: .twoDigits):\(second: .twoDigits).\(secondFraction: .fractional(3))",
+			locale: Locale(identifier: "en_US_POSIX"),
+			timeZone: .current,
+			calendar: Calendar(identifier: .gregorian)
+		)
 	}
 	
 	// MARK: - Public Methods
@@ -147,7 +155,7 @@ private extension Logger {
 		function: String,
 		line: Int
 	) -> String {
-		let timestamp = dateFormatter.string(from: Date())
+		let timestamp = timestampStyle.format(Date())
 		let fileName = URL(fileURLWithPath: file).lastPathComponent
 		
 		return "[\(timestamp)] \(level.emoji) \(level.rawValue) [\(category.rawValue)] \(fileName):\(line) \(function) - \(message)"

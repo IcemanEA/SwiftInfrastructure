@@ -51,7 +51,7 @@
 /// - `performance` — performance metrics.
 /// - `lifecycle` — component life cycle.
 /// - `general` — events without a more specific category.
-public protocol ILogger {
+public protocol ILogger: Sendable {
 
 	/// The primary logging entry point with full parameter control.
 	///

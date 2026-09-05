@@ -29,7 +29,7 @@
 /// databaseLogger.error("Database connection failed")
 /// filesLogger.info("File download completed")
 /// ```
-public enum LogCategory: String, CaseIterable {
+public enum LogCategory: String, CaseIterable, Sendable {
 	/// Network operations and API interaction.
 	///
 	/// Use for:
