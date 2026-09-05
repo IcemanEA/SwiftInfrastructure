@@ -94,6 +94,9 @@ public enum UserDefaultsKey: String, CaseIterable {
 	/// Timestamp of the most recent successful clinics sync from the server, in seconds since the Unix epoch.
 	case lastClinicsSyncTime = "last_clinics_sync_time"
 
+	/// The reader's recent programme-search queries, newest first, as an array of strings.
+	case recentProgramSearchQueries = "recent_program_search_queries"
+
 	// MARK: - Computed Properties
 
 	/// A human-readable label for the key, suitable for debug output.
@@ -117,6 +120,8 @@ public enum UserDefaultsKey: String, CaseIterable {
 			return "Last Sponsors Sync Timestamp"
 		case .lastClinicsSyncTime:
 			return "Last Clinics Sync Timestamp"
+		case .recentProgramSearchQueries:
+			return "Recent Programme Search Queries"
 		}
 	}
 
@@ -125,7 +130,7 @@ public enum UserDefaultsKey: String, CaseIterable {
 		switch self {
 		case .lastAppStartTime:
 			return .application
-		case .onboardingCompleted:
+		case .onboardingCompleted, .recentProgramSearchQueries:
 			return .user
 		case .lastJwtSyncTime, .lastNewsSyncTime, .lastConferencesSyncTime:
 			return .cache
@@ -155,6 +160,8 @@ public enum UserDefaultsKey: String, CaseIterable {
 			return 0
 		case .lastCertificatesSyncTime, .lastMessagesSyncTime, .lastSponsorsSyncTime, .lastClinicsSyncTime:
 			return 0
+		case .recentProgramSearchQueries:
+			return [String]()
 		}
 	}
 }
