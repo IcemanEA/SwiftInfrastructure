@@ -150,7 +150,9 @@ public enum UserDefaultsKey: String, CaseIterable {
 	}
 
 	/// The default value the repository seeds into `UserDefaults` when no value is stored yet.
-	var defaultValue: Any? {
+	///
+	/// Public so that test doubles outside this module, such as `MockUserDefaultsRepository`, apply the same fallback.
+	public var defaultValue: Any? {
 		switch self {
 		case .lastAppStartTime:
 			return 0

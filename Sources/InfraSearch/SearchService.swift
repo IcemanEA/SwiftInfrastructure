@@ -23,6 +23,9 @@ import Foundation
 /// 5. Any word of a multi-word query matches a prefix of any word of the value.
 /// 6. The value contains the query as a substring.
 /// 7. Any word of the value contains any word of the query.
+///
+/// Matches with the same priority are ordered by `displayName` ascending, so the
+/// result is stable across calls and process launches.
 public actor SearchService: ISearchService {
 
 	// MARK: - Private Properties
@@ -68,7 +71,7 @@ public actor SearchService: ISearchService {
 		}
 
 		return scored
-			.sorted { $0.score < $1.score }
+			.sorted { ($0.score, $0.key) < ($1.score, $1.key) }
 			.prefix(5)
 			.map(\.key)
 	}

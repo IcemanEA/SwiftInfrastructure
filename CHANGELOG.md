@@ -8,6 +8,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+### Added
+
+- Swift Testing test targets for `InfraCore`, `InfraNetwork`, `InfraSearch`, `InfraUserDefaults`, `InfraPdf`, `InfraImageMetadata` and `InfraTestSupport`, run with `xcodebuild test -scheme SwiftInfrastructure-Package` on an iOS Simulator.
+- `InfraTestSupport`: `MockLogger`, a recording `ILogger` for asserting on log calls.
+- `InfraTestSupport`: `MockPdfCertificateGenerator`, a configurable `IPdfCertificateGenerator`.
+- `InfraUserDefaults`: `UserDefaultsKey.defaultValue` is now `public`.
+
+### Changed
+
+- `InfraSearch`: results with equal relevance are now ordered by display name. Previously their order depended on dictionary iteration and could change between launches.
+- `InfraTestSupport`: `MockUserDefaultsRepository` is now an in-memory store that falls back to each key's declared default. Previously every read returned `nil` and writes were discarded; tests that relied on that will see stored values.
+- `InfraTestSupport`: `MockKeychainRepository` no longer prints every operation to stdout. Pass `logger:` to its initializer to receive those messages through an `ILogger`; `printCurrentState()` still prints on request.
+- `InfraUserDefaults`: the `hasValue(for:)` documentation now states that seeded defaults count as stored values.
+
 ## [0.1.0] — 2026-04-24
 
 ### Added

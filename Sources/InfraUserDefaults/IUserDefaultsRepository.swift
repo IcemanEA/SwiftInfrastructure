@@ -114,10 +114,14 @@ public protocol IUserDefaultsRepository {
 
 	// MARK: - Utility Methods
 
-	/// Returns whether any value is stored for the given key (independent of its default).
+	/// Returns whether a value is currently stored for the given key.
+	///
+	/// The repository seeds each key's declared default into storage when it is
+	/// created, so this returns `true` for every key with a default until that
+	/// value is removed with ``removeValue(for:)``.
 	///
 	/// - Parameter key: The key to check.
-	/// - Returns: `true` if a value has been stored for the key, `false` otherwise.
+	/// - Returns: `true` if storage holds a value for the key, including a seeded default; `false` otherwise.
 	func hasValue(for key: UserDefaultsKey) -> Bool
 
 	/// Resets every managed key back to its default value.

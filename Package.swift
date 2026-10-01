@@ -54,6 +54,24 @@ let package = Package(
 				"InfraImageMetadata",
 				"InfraSearch"
 			]
+		),
+		.testTarget(name: "InfraCoreTests",          dependencies: ["InfraCore", "InfraTestSupport"]),
+		.testTarget(name: "InfraNetworkTests",       dependencies: ["InfraNetwork", "InfraCore", "InfraTestSupport"]),
+		.testTarget(name: "InfraSearchTests",        dependencies: ["InfraSearch"]),
+		.testTarget(name: "InfraUserDefaultsTests",  dependencies: ["InfraUserDefaults", "InfraTestSupport"]),
+		.testTarget(name: "InfraPdfTests",           dependencies: ["InfraPdf", "InfraTestSupport"]),
+		.testTarget(name: "InfraImageMetadataTests", dependencies: ["InfraImageMetadata"]),
+		.testTarget(
+			name: "InfraTestSupportTests",
+			dependencies: [
+				"InfraTestSupport",
+				"InfraCore",
+				"InfraKeychain",
+				"InfraUserDefaults",
+				"InfraNotifications",
+				"InfraPdf",
+				"InfraFileCache"
+			]
 		)
 	],
 	swiftLanguageModes: [.v5]

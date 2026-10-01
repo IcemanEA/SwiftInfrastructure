@@ -80,8 +80,10 @@ Every source file under `Sources/` opens with a standard header block:
 Use Xcode. The package targets iOS 15 and only builds cleanly for an iOS destination:
 
 ```bash
-xcodebuild -scheme SwiftInfrastructure -destination 'generic/platform=iOS Simulator' build
+xcodebuild -scheme SwiftInfrastructure-Package -destination 'generic/platform=iOS Simulator' build
 ```
+
+`SwiftInfrastructure-Package` is the package-level scheme Xcode generates; it builds every library and test target. Per-product schemes (`InfraCore`, `InfraNetwork`, …) build a single library.
 
 `swift build` on macOS **fails** with a diagnostic about `InfraDatabase` requiring macOS 10.15 through GRDB. This is expected — the package does not support macOS as a build platform.
 
@@ -97,7 +99,34 @@ When hacking on the package inside the Xcode UI, use Product → Build (⌘B). N
 
 ## Tests
 
-The package does not currently declare a test target in `Package.swift`. Contributions that add one are welcome — one `.testTarget(name: "Infra{Module}Tests", dependencies: [...])` per `Infra*` product under test, with Swift Testing (`import Testing`, not XCTest).
+The package uses Swift Testing (`import Testing`). XCTest is not used. Each testable module has its own test target under `Tests/`:
+
+| Test target | Covers |
+|---|---|
+| `InfraCoreTests` | `LogManager`, `Logger` level and category mapping, `MaskStringConvertible`, `AppFileManager` |
+| `InfraNetworkTests` | `DeviceCredentialsGenerator`, `NetworkRequestBuilder`, `URLRequest` / `URLComponents` extensions, models, `NetworkClient` via a `URLProtocol` stub |
+| `InfraSearchTests` | `SearchService` ranking and ordering |
+| `InfraUserDefaultsTests` | `UserDefaultsRepository` over an isolated suite, `UserDefaultsKey` |
+| `InfraPdfTests` | `CertificateTemplateType`, `CertificateGeneratorFactory`, `CertificateData` |
+| `InfraImageMetadataTests` | `ImageMetadataService` |
+| `InfraTestSupportTests` | every `Mock*` in `InfraTestSupport` |
+
+`InfraKeychain`, `InfraDatabase`, `InfraFileCache` and `InfraNotifications` have no test target yet. Each needs an injectable dependency before it can be tested without touching the system Keychain, Application Support, the network or the notification center.
+
+Run the suite from Xcode with Product → Test (⌘U) on the `SwiftInfrastructure-Package` scheme, or from the shell:
+
+```bash
+xcodebuild test -scheme SwiftInfrastructure-Package -destination 'platform=iOS Simulator,name=iPhone 17e'
+```
+
+Pick any installed simulator for `name=`. `swift test` on macOS is **not supported**, because the package declares iOS as its only platform.
+
+Rules for new tests:
+
+- Tests are hermetic. They never use the network, the system Keychain, `UserDefaults.standard` or files outside a temporary directory they create and remove.
+- Tests are silent. Use `MockLogger` from `InfraTestSupport` instead of a real `Logger`, or construct `Logger` with both console and OS logging disabled.
+- Tests are parallel-safe. Each test owns its system under test and backing store.
+- A new protocol in an `Infra*` module ships with a `Mock*` in `InfraTestSupport` and tests for that mock in `InfraTestSupportTests`.
 
 ## Reporting issues
 

@@ -14,6 +14,7 @@
 //
 
 import Foundation
+import InfraCore
 import InfraKeychain
 
 // MARK: - MockKeychainRepository
@@ -33,7 +34,7 @@ import InfraKeychain
 ///
 /// - In-memory storage (values are lost at process termination).
 /// - Failure-simulation toggles for save / update / delete paths.
-/// - Verbose logging of every operation.
+/// - Optional logging of every operation through an injected ``ILogger``; silent by default.
 /// - Preset-token seeding.
 /// - Thread-safe access via a concurrent `DispatchQueue` with barrier writes.
 ///
@@ -81,13 +82,19 @@ public final class MockKeychainRepository: IKeychainRepository {
 
 	/// Concurrent queue that guards access to the in-memory store.
 	private let queue = DispatchQueue(label: "MockKeychainRepository", attributes: .concurrent)
+
+	/// Receives a message for every operation when a logger is injected; `nil` keeps the mock silent.
+	private let logger: LogManager?
 	
 	// MARK: - Public Initializer
 	
 	/// Creates a new mock repository, optionally pre-seeded with tokens.
 	///
-	/// - Parameter presetTokens: Tokens to seed into the in-memory store, keyed by type.
-	public init(presetTokens: [SecretTokenType: String] = [:]) {
+	/// - Parameters:
+	///   - presetTokens: Tokens to seed into the in-memory store, keyed by type.
+	///   - logger: A logger that receives a message for every operation under the `.repository` category. Defaults to `nil`, which keeps the mock silent.
+	public init(presetTokens: [SecretTokenType: String] = [:], logger: ILogger? = nil) {
+		self.logger = logger.map { LogManager(logger: $0, category: .repository) }
 		for (type, value) in presetTokens {
 			let token = SecretToken(type: type, rawValue: value)
 			tokens[type] = token
@@ -101,7 +108,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 			getCallCount += 1
 			let token = tokens[type]
 			
-			print("🔍 MockRepo: Getting secret for \(type) - \(token != nil ? "Found" : "Not found")")
+			logger?.debug("🔍 MockRepo: Getting secret for \(type) - \(token != nil ? "Found" : "Not found")")
 			return token
 		}
 	}
@@ -111,12 +118,12 @@ public final class MockKeychainRepository: IKeychainRepository {
 			saveCallCount += 1
 			
 			if shouldFailSave {
-				print("❌ MockRepo: Save failed (simulated) for \(token.type)")
+				logger?.warning("❌ MockRepo: Save failed (simulated) for \(token.type)")
 				return false
 			}
 			
 			tokens[token.type] = token
-			print("✅ MockRepo: Saved secret for \(token.type)")
+			logger?.debug("✅ MockRepo: Saved secret for \(token.type)")
 			return true
 		}
 	}
@@ -126,14 +133,14 @@ public final class MockKeychainRepository: IKeychainRepository {
 			deleteCallCount += 1
 			
 			if shouldFailDelete {
-				print("❌ MockRepo: Delete failed (simulated) for \(type)")
+				logger?.warning("❌ MockRepo: Delete failed (simulated) for \(type)")
 				return false
 			}
 			
 			let existed = tokens[type] != nil
 			tokens.removeValue(forKey: type)
 			
-			print("🗑️ MockRepo: Deleted secret for \(type) - \(existed ? "existed" : "didn't exist")")
+			logger?.debug("🗑️ MockRepo: Deleted secret for \(type) - \(existed ? "existed" : "didn't exist")")
 			return true
 		}
 	}
@@ -143,14 +150,14 @@ public final class MockKeychainRepository: IKeychainRepository {
 			updateCallCount += 1
 			
 			if shouldFailUpdate {
-				print("❌ MockRepo: Update failed (simulated) for \(token.type)")
+				logger?.warning("❌ MockRepo: Update failed (simulated) for \(token.type)")
 				return false
 			}
 			
 			let existed = tokens[token.type] != nil
 			tokens[token.type] = token
 			
-			print("🔄 MockRepo: Updated secret for \(token.type) - \(existed ? "replaced existing" : "created new")")
+			logger?.debug("🔄 MockRepo: Updated secret for \(token.type) - \(existed ? "replaced existing" : "created new")")
 			return true
 		}
 	}
@@ -166,7 +173,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 		queue.sync(flags: .barrier) {
 			let token = SecretToken(type: type, rawValue: value)
 			tokens[type] = token
-			print("⚙️ MockRepo: Preset token for \(type)")
+			logger?.debug("⚙️ MockRepo: Preset token for \(type)")
 		}
 	}
 	
@@ -176,7 +183,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 	public func simulateSaveFailure(_ shouldFail: Bool = true) {
 		queue.sync(flags: .barrier) {
 			shouldFailSave = shouldFail
-			print("⚙️ MockRepo: Save failure simulation \(shouldFail ? "enabled" : "disabled")")
+			logger?.debug("⚙️ MockRepo: Save failure simulation \(shouldFail ? "enabled" : "disabled")")
 		}
 	}
 	
@@ -186,7 +193,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 	public func simulateUpdateFailure(_ shouldFail: Bool = true) {
 		queue.sync(flags: .barrier) {
 			shouldFailUpdate = shouldFail
-			print("⚙️ MockRepo: Update failure simulation \(shouldFail ? "enabled" : "disabled")")
+			logger?.debug("⚙️ MockRepo: Update failure simulation \(shouldFail ? "enabled" : "disabled")")
 		}
 	}
 	
@@ -196,7 +203,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 	public func simulateDeleteFailure(_ shouldFail: Bool = true) {
 		queue.sync(flags: .barrier) {
 			shouldFailDelete = shouldFail
-			print("⚙️ MockRepo: Delete failure simulation \(shouldFail ? "enabled" : "disabled")")
+			logger?.debug("⚙️ MockRepo: Delete failure simulation \(shouldFail ? "enabled" : "disabled")")
 		}
 	}
 	
@@ -206,7 +213,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 			shouldFailSave = false
 			shouldFailUpdate = false
 			shouldFailDelete = false
-			print("⚙️ MockRepo: All failure simulations reset")
+			logger?.debug("⚙️ MockRepo: All failure simulations reset")
 		}
 	}
 	
@@ -216,7 +223,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 	public func clearAllTokens() {
 		queue.sync(flags: .barrier) {
 			tokens.removeAll()
-			print("🧹 MockRepo: All tokens cleared")
+			logger?.debug("🧹 MockRepo: All tokens cleared")
 		}
 	}
 	
@@ -258,7 +265,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 			updateCallCount = 0
 			deleteCallCount = 0
 			getCallCount = 0
-			print("📊 MockRepo: Call counts reset")
+			logger?.debug("📊 MockRepo: Call counts reset")
 		}
 	}
 	
@@ -277,7 +284,7 @@ public final class MockKeychainRepository: IKeychainRepository {
 		return queue.sync(flags: .barrier) {
 			let tokenCount = tokens.count
 			tokens.removeAll()
-			print("🧹 MockRepo: Cleared all secrets (\(tokenCount) tokens removed)")
+			logger?.debug("🧹 MockRepo: Cleared all secrets (\(tokenCount) tokens removed)")
 			return true
 		}
 	}
