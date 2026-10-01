@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Added
 
+- Continuous integration on GitHub Actions: every push to `master` and every pull request builds the package and runs the full test suite with Xcode 26.6 on an iOS Simulator, plus a test-hygiene check.
 - Swift Testing test targets for `InfraCore`, `InfraNetwork`, `InfraSearch`, `InfraUserDefaults`, `InfraPdf`, `InfraImageMetadata` and `InfraTestSupport`, run with `xcodebuild test -scheme SwiftInfrastructure-Package` on an iOS Simulator.
 - `InfraTestSupport`: `MockLogger`, a recording `ILogger` for asserting on log calls.
 - `InfraTestSupport`: `MockPdfCertificateGenerator`, a configurable `IPdfCertificateGenerator`.
