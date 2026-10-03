@@ -96,6 +96,7 @@ When hacking on the package inside the Xcode UI, use Product → Build (⌘B). N
 - **Breaking changes** to any `public` API must be flagged with a `BREAKING:` prefix in the subject: `BREAKING: remove deprecated Logger.init(category:)`.
 - Explain the *why* in the PR description. The *what* is in the diff.
 - If your change touches a protocol in `Infra*`, the PR must also update the corresponding `Mock*` in `InfraTestSupport`.
+- Both CI checks, **Test hygiene** and **Build and test**, must be green before a PR is merged.
 
 ## Tests
 
@@ -120,6 +121,8 @@ xcodebuild test -scheme SwiftInfrastructure-Package -destination 'platform=iOS S
 ```
 
 Pick any installed simulator for `name=`. `swift test` on macOS is **not supported**, because the package declares iOS as its only platform.
+
+Continuous integration runs the same `xcodebuild test` command with Xcode 26.6 on a GitHub-hosted macOS 26 runner for every push to `master` and every pull request targeting it. A separate job checks that tests use Swift Testing only and never touch `URLSession.shared`, `UserDefaults.standard` or the real Keychain. The workflow lives in `.github/workflows/ci.yml`.
 
 Rules for new tests:
 

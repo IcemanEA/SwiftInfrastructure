@@ -10,7 +10,7 @@ import Testing
 import InfraFileCache
 import InfraTestSupport
 
-@Suite("MockFileDownloadService", .timeLimit(.minutes(1)))
+@Suite("MockFileDownloadService")
 struct MockFileDownloadServiceTests {
 
 	private let directory: URL
@@ -34,7 +34,8 @@ struct MockFileDownloadServiceTests {
 		try? FileManager.default.removeItem(at: directory)
 	}
 
-	@Test("A successful download returns the local path and creates the file")
+	@available(iOS 16, *)
+	@Test("A successful download returns the local path and creates the file", .timeLimit(.minutes(1)))
 	func successfulDownload() async throws {
 		defer { cleanUp() }
 		let sut = makeService()
@@ -47,7 +48,8 @@ struct MockFileDownloadServiceTests {
 		#expect(FileManager.default.fileExists(atPath: localPath))
 	}
 
-	@Test("Progress values stay within 0...1 and end at 1.0")
+	@available(iOS 16, *)
+	@Test("Progress values stay within 0...1 and end at 1.0", .timeLimit(.minutes(1)))
 	func progressRange() async throws {
 		defer { cleanUp() }
 		let sut = makeService()
@@ -62,7 +64,8 @@ struct MockFileDownloadServiceTests {
 		#expect(values.last == 1.0)
 	}
 
-	@Test("A second download of the same pair while the first is in progress is rejected")
+	@available(iOS 16, *)
+	@Test("A second download of the same pair while the first is in progress is rejected", .timeLimit(.minutes(1)))
 	func duplicateDownloadRejected() async throws {
 		defer { cleanUp() }
 		let sut = makeService(totalDownloadTime: 0.5)
@@ -84,7 +87,8 @@ struct MockFileDownloadServiceTests {
 		#expect((try? firstResult.get()) != nil)
 	}
 
-	@Test("Cancelling an unknown task returns taskNotFound")
+	@available(iOS 16, *)
+	@Test("Cancelling an unknown task returns taskNotFound", .timeLimit(.minutes(1)))
 	func cancelUnknownTask() async {
 		defer { cleanUp() }
 		let sut = makeService()

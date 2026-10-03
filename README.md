@@ -1,3 +1,4 @@
+[![CI](https://github.com/IcemanEA/SwiftInfrastructure/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/IcemanEA/SwiftInfrastructure/actions/workflows/ci.yml?query=branch%3Amaster)
 [![License: MIT](https://img.shields.io/github/license/IcemanEA/SwiftInfrastructure)](LICENSE)
 [![Latest tag](https://img.shields.io/github/v/tag/IcemanEA/SwiftInfrastructure?label=version)](https://github.com/IcemanEA/SwiftInfrastructure/releases)
 [![iOS 15+](https://img.shields.io/badge/iOS-15%2B-blue)](#compatibility)

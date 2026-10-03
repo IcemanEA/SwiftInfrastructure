@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  hygiene:
+    name: Test hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Tests use Swift Testing only
+        run: |
+          ! grep -rnE 'import XCTest|XCTestCase|XCTAssert' Tests/
+
+      - name: Tests avoid shared system resources
+        run: |
+          ! grep -rnE 'URLSession\.shared|UserDefaults\.standard|\bKeychainRepository\(|\bKeychainService\(' Tests/
+
+  build-and-test:
+    name: Build and test (Xcode 26.6)
+    runs-on: macos-26
+    timeout-minutes: 30
+    env:
+      XCODE_APP: /Applications/Xcode_26.6.app
+      SIMULATOR_NAME: iPhone 17
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Select Xcode
+        run: |
+          if [ ! -d "$XCODE_APP" ]; then
+            echo "::error::$XCODE_APP is not installed on this runner"
+            ls -d /Applications/Xcode*.app
+            exit 1
+          fi
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+          swift --version
+
+      - name: Cache Swift packages
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: .spm
+          key: spm-${{ runner.os }}-xcode-26.6-${{ hashFiles('Package.resolved') }}
+          restore-keys: |
+            spm-${{ runner.os }}-xcode-26.6-
+
+      - name: Pick simulator
+        run: |
+          udid=$(xcrun simctl list devices available --json | python3 -c '
+          import json, re, sys
+          name = sys.argv[1]
+          candidates = []
+          for runtime, devices in json.load(sys.stdin)["devices"].items():
+              match = re.search(r"iOS-(\d+)-(\d+)", runtime)
+              if not match:
+                  continue
+              version = tuple(int(part) for part in match.groups())
+              for device in devices:
+                  if device["name"] == name and device.get("isAvailable", True):
+                      candidates.append((version, device["udid"]))
+          if not candidates:
+              sys.exit("No available iOS simulator named \"%s\"" % name)
+          version, udid = max(candidates)
+          print("Using %s, iOS %d.%d, %s" % (name, version[0], version[1], udid), file=sys.stderr)
+          print(udid)
+          ' "$SIMULATOR_NAME")
+          echo "SIMULATOR_UDID=$udid" >> "$GITHUB_ENV"
+
+      - name: Build and test
+        run: |
+          xcodebuild test \
+            -scheme SwiftInfrastructure-Package \
+            -destination "id=$SIMULATOR_UDID" \
+            -resultBundlePath TestResults.xcresult \
+            -clonedSourcePackagesDirPath .spm
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: TestResults
+          path: TestResults.xcresult
+          retention-days: 7
