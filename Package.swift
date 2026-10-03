@@ -57,6 +57,7 @@ let package = Package(
 		),
 		.testTarget(name: "InfraCoreTests",          dependencies: ["InfraCore", "InfraTestSupport"]),
 		.testTarget(name: "InfraNetworkTests",       dependencies: ["InfraNetwork", "InfraCore", "InfraTestSupport"]),
+		.testTarget(name: "InfraKeychainTests",      dependencies: ["InfraKeychain"]),
 		.testTarget(name: "InfraSearchTests",        dependencies: ["InfraSearch"]),
 		.testTarget(name: "InfraUserDefaultsTests",  dependencies: ["InfraUserDefaults", "InfraTestSupport"]),
 		.testTarget(name: "InfraPdfTests",           dependencies: ["InfraPdf", "InfraTestSupport"]),

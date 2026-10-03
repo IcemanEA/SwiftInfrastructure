@@ -106,13 +106,14 @@ The package uses Swift Testing (`import Testing`). XCTest is not used. Each test
 |---|---|
 | `InfraCoreTests` | `LogManager`, `Logger` level and category mapping, `MaskStringConvertible`, `AppFileManager` |
 | `InfraNetworkTests` | `DeviceCredentialsGenerator`, `NetworkRequestBuilder`, `URLRequest` / `URLComponents` extensions, models, `NetworkClient` via a `URLProtocol` stub |
+| `InfraKeychainTests` | `KeychainRepository` over an in-memory store, `SecretTokenType` |
 | `InfraSearchTests` | `SearchService` ranking and ordering |
 | `InfraUserDefaultsTests` | `UserDefaultsRepository` over an isolated suite, `UserDefaultsKey` |
 | `InfraPdfTests` | `CertificateTemplateType`, `CertificateGeneratorFactory`, `CertificateData` |
 | `InfraImageMetadataTests` | `ImageMetadataService` |
 | `InfraTestSupportTests` | every `Mock*` in `InfraTestSupport` |
 
-`InfraKeychain`, `InfraDatabase`, `InfraFileCache` and `InfraNotifications` have no test target yet. Each needs an injectable dependency before it can be tested without touching the system Keychain, Application Support, the network or the notification center.
+`InfraDatabase`, `InfraFileCache` and `InfraNotifications` have no test target yet. Each needs an injectable dependency before it can be tested without touching Application Support, the network or the notification center.
 
 Run the suite from Xcode with Product → Test (⌘U) on the `SwiftInfrastructure-Package` scheme, or from the shell:
 
@@ -122,7 +123,7 @@ xcodebuild test -scheme SwiftInfrastructure-Package -destination 'platform=iOS S
 
 Pick any installed simulator for `name=`. `swift test` on macOS is **not supported**, because the package declares iOS as its only platform.
 
-Continuous integration runs the same `xcodebuild test` command with Xcode 26.6 on a GitHub-hosted macOS 26 runner for every push to `master` and every pull request targeting it. A separate job checks that tests use Swift Testing only and never touch `URLSession.shared`, `UserDefaults.standard` or the real Keychain. The workflow lives in `.github/workflows/ci.yml`.
+Continuous integration runs the same `xcodebuild test` command with Xcode 26.6 on a GitHub-hosted macOS 26 runner for every push to `master` and every pull request targeting it. A separate job checks that tests use Swift Testing only and never touch `URLSession.shared`, `UserDefaults.standard` or the real Keychain: tests never construct `KeychainService`, and every `KeychainRepository` they create receives an injected store on the same line. The workflow lives in `.github/workflows/ci.yml`.
 
 Rules for new tests:
 
