@@ -92,3 +92,7 @@ public struct KeychainService {
 		return allSuccess
 	}
 }
+
+// MARK: - IKeychainService
+
+extension KeychainService: IKeychainService {}

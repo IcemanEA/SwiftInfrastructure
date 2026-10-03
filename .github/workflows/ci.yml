@@ -32,7 +32,11 @@ jobs:
 
       - name: Tests avoid shared system resources
         run: |
-          ! grep -rnE 'URLSession\.shared|UserDefaults\.standard|\bKeychainRepository\(|\bKeychainService\(' Tests/
+          ! grep -rnE 'URLSession\.shared|UserDefaults\.standard|\bKeychainService\(' Tests/
+
+      - name: Keychain repositories in tests use an injected store
+        run: |
+          ! grep -rnE '\bKeychainRepository\(' Tests/ | grep -v 'keychain:'
 
   build-and-test:
     name: Build and test (Xcode 26.6)

@@ -12,10 +12,17 @@ public final class KeychainRepository: IKeychainRepository {
 	private let service: String = "secrets"
 	private let prefix: String
 
-	private let keychain = KeychainService()
+	private let keychain: IKeychainService
 
 	public init(prefix: String) {
 		self.prefix = prefix
+		self.keychain = KeychainService()
+	}
+
+	/// Creates a repository over the given store. Exists for the package's tests, which inject an in-memory store.
+	init(prefix: String, keychain: IKeychainService) {
+		self.prefix = prefix
+		self.keychain = keychain
 	}
 
 	public func getSecret(for type: SecretTokenType) -> SecretToken? {
