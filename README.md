@@ -47,7 +47,7 @@ No umbrella product — consumers import only what they use.
 ### Remote (GitHub)
 
 ```swift
-.package(url: "https://github.com/IcemanEA/SwiftInfrastructure.git", .upToNextMinor(from: "0.1.0"))
+.package(url: "https://github.com/IcemanEA/SwiftInfrastructure.git", .upToNextMinor(from: "0.2.0"))
 ```
 
 ### Xcode project

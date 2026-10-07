@@ -8,6 +8,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-10-07
+
 ### Added
 
 - Continuous integration on GitHub Actions: every push to `master` and every pull request builds the package and runs the full test suite with Xcode 26.6 on an iOS Simulator, plus a test-hygiene check.
@@ -19,6 +21,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Changed
 
+- **BREAKING** `InfraPdf`: `PdfCertificateGenerator` and `PdfTemplateCertificateGenerator` now require `logger: ILogger` in their initializers, and `InfraPdf` depends on `InfraCore`. Pass the app's logger where the generators are constructed.
+- `InfraPdf`: `CertificateTextItem.fontName` is now read as a comma-separated list of PostScript font names in priority order; the first installed font is used. When none is installed the item is drawn with the system font and a warning with the original value is logged. Previously such an item was silently left out of the certificate. A single name without commas behaves as before.
 - `InfraSearch`: results with equal relevance are now ordered by display name. Previously their order depended on dictionary iteration and could change between launches.
 - `InfraTestSupport`: `MockUserDefaultsRepository` is now an in-memory store that falls back to each key's declared default. Previously every read returned `nil` and writes were discarded; tests that relied on that will see stored values.
 - `InfraTestSupport`: `MockKeychainRepository` no longer prints every operation to stdout. Pass `logger:` to its initializer to receive those messages through an `ILogger`; `printCurrentState()` still prints on request.
