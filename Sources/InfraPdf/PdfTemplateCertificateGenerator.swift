@@ -5,6 +5,7 @@
 //  Created by Egor Ledkov on [DATE].
 //
 
+import InfraCore
 import PDFKit
 import UIKit
 
@@ -14,9 +15,16 @@ import UIKit
 /// Text becomes part of the PDF content, not an annotation - can only be edited with special tools.
 public final class PdfTemplateCertificateGenerator: IPdfCertificateGenerator {
 
+	// MARK: - Private Properties
+
+	private let logger: LogManager
+
 	// MARK: - Initialization
 
-	public init() {}
+	/// - Parameter logger: логгер, в который генератор пишет предупреждения о подмене шрифта.
+	public init(logger: ILogger) {
+		self.logger = LogManager(logger: logger, category: .business)
+	}
 
 	// MARK: - Public Methods
 
@@ -138,9 +146,7 @@ public final class PdfTemplateCertificateGenerator: IPdfCertificateGenerator {
 		context: CGContext,
 		textItem: CertificateTextItem
 	) {
-		guard let font = UIFont(name: textItem.fontName, size: textItem.fontSize) else {
-			return
-		}
+		let font = CertificateFontResolver.resolve(fontName: textItem.fontName, size: textItem.fontSize, logger: logger)
 
 		// Text attributes
 		let paragraphStyle = NSMutableParagraphStyle()

@@ -5,15 +5,23 @@
 //  Created by Egor Ledkov on 15.07.2025.
 //
 
+import InfraCore
 import SwiftUI
 import UIKit
 
 /// PDF certificate generator implementation using UIKit for JPG templates
 public final class PdfCertificateGenerator: IPdfCertificateGenerator {
 
+	// MARK: - Private Properties
+
+	private let logger: LogManager
+
 	// MARK: - Initialization
 
-	public init() {}
+	/// - Parameter logger: логгер, в который генератор пишет предупреждения о подмене шрифта.
+	public init(logger: ILogger) {
+		self.logger = LogManager(logger: logger, category: .business)
+	}
 
 	// MARK: - Public Methods
 
@@ -110,9 +118,7 @@ public final class PdfCertificateGenerator: IPdfCertificateGenerator {
 	}
 	
 	private func drawTextOverlay(in context: CGContext, imageSize: CGSize, textItem: CertificateTextItem) {
-		guard let font = UIFont(name: textItem.fontName, size: textItem.fontSize) else {
-			return
-		}
+		let font = CertificateFontResolver.resolve(fontName: textItem.fontName, size: textItem.fontSize, logger: logger)
 		
 		let attributes: [NSAttributedString.Key: Any] = [
 			.font: font,

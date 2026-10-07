@@ -28,7 +28,7 @@ Reusable iOS infrastructure layer extracted from a production app. Granular Swif
 | `InfraKeychain`      | Secure credential storage (`IKeychainRepository`, `KeychainService`, `SecretToken`) | — |
 | `InfraUserDefaults`  | Type-safe `UserDefaults` access (`IUserDefaultsRepository`, `UserDefaultsKey`) | — |
 | `InfraNotifications` | Push notification manager and authorization (`INotificationManager`) | — |
-| `InfraPdf`           | PDF/JPG certificate generation (`IPdfCertificateGenerator`, `CertificateGeneratorFactory`) | — |
+| `InfraPdf`           | PDF/JPG certificate generation (`IPdfCertificateGenerator`, `CertificateGeneratorFactory`); depends on `InfraCore` for logging | — |
 | `InfraFileCache`     | Remote file download with progress/resume (`IFileDownloadService`) | — |
 | `InfraImageMetadata` | Image dimension extraction (`ImageMetadataService`) | — |
 | `InfraSearch`        | Smart string search with relevance ranking (`ISearchService`) | — |
@@ -196,11 +196,13 @@ _ = await manager.scheduleNotification(
 ### InfraPdf — generate a certificate
 
 ```swift
+import InfraCore
 import InfraPdf
 
+// `logger` is an `ILogger`, see "InfraCore — logging" above.
 let factory = CertificateGeneratorFactory(
-    imageGenerator: PdfTemplateCertificateGenerator(),
-    pdfGenerator: PdfCertificateGenerator()
+    imageGenerator: PdfCertificateGenerator(logger: logger),
+    pdfGenerator: PdfTemplateCertificateGenerator(logger: logger)
 )
 
 let templateURL = Bundle.main.url(forResource: "certificate", withExtension: "jpg")!
@@ -215,6 +217,8 @@ let (preview, pdf) = try await generator.generateCertificate(
     certificateData: data
 )
 ```
+
+`fontName` of a `CertificateTextItem` accepts a comma-separated list of PostScript names in priority order, for example `"Montserrat-Bold, HelveticaNeue-Bold"`. The first installed name is used. When none is installed the item is drawn with the system font and a warning with the original value is logged, so the certificate never loses a field because of a misconfigured font.
 
 ### InfraFileCache — download with progress
 

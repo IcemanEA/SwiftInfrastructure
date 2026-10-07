@@ -37,7 +37,7 @@ let package = Package(
 		.target(name: "InfraNotifications", dependencies: ["InfraCore"]),
 		.target(name: "InfraKeychain",      dependencies: ["InfraCore"]),
 		.target(name: "InfraUserDefaults"),
-		.target(name: "InfraPdf"),
+		.target(name: "InfraPdf",           dependencies: ["InfraCore"]),
 		.target(name: "InfraImageMetadata"),
 		.target(name: "InfraSearch"),
 		.target(

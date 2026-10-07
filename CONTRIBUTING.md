@@ -109,7 +109,7 @@ The package uses Swift Testing (`import Testing`). XCTest is not used. Each test
 | `InfraKeychainTests` | `KeychainRepository` over an in-memory store, `SecretTokenType` |
 | `InfraSearchTests` | `SearchService` ranking and ordering |
 | `InfraUserDefaultsTests` | `UserDefaultsRepository` over an isolated suite, `UserDefaultsKey` |
-| `InfraPdfTests` | `CertificateTemplateType`, `CertificateGeneratorFactory`, `CertificateData` |
+| `InfraPdfTests` | `CertificateTemplateType`, `CertificateGeneratorFactory`, `CertificateData`, `CertificateFontResolver`, system-font fallback of both generators over templates created in a temporary directory |
 | `InfraImageMetadataTests` | `ImageMetadataService` |
 | `InfraTestSupportTests` | every `Mock*` in `InfraTestSupport` |
 
