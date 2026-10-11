@@ -14,7 +14,7 @@ import Foundation
 /// leakage of credentials when an instance is interpolated into a log line,
 /// error message, or debugger output. Apply this to any type that wraps a
 /// token, password, session identifier, or other secret.
-public protocol MaskStringConvertible: CustomStringConvertible, CustomDebugStringConvertible { }
+public protocol MaskStringConvertible: CustomStringConvertible, CustomDebugStringConvertible, Sendable { }
 
 public extension MaskStringConvertible {
 	var description: String {

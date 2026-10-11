@@ -11,7 +11,7 @@ import UserNotifications
 // MARK: - Custom Authorization Status
 
 /// A library-local mirror of `UNAuthorizationStatus` so consumers don't have to import `UserNotifications`.
-public enum NotificationAuthorizationStatus {
+public enum NotificationAuthorizationStatus: Sendable {
 	/// The user has not yet been asked for notification permission.
 	case notDetermined
 

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Service for generating PDF certificates with text overlay on JPG templates
-public protocol IPdfCertificateGenerator {
+public protocol IPdfCertificateGenerator: Sendable {
 	/// Generate PDF certificate and preview from JPG template with overlaid text
 	/// - Parameters:
 	///   - templateImagePath: Path of JPG template file in Bundle

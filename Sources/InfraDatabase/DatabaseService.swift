@@ -14,9 +14,9 @@ import InfraCore
 /// A consumer-supplied registrar of GRDB migrations for a specific project.
 ///
 /// Each consuming project implements this protocol once and passes an instance
-/// to ``IDatabaseService/setup(with:)``. `SwiftInfrastructure` ships no
+/// to ``IDatabaseService/migrate(with:)``. `SwiftInfrastructure` ships no
 /// migrations of its own — schema is the consumer's concern.
-public protocol IDatabaseMigrator {
+public protocol IDatabaseMigrator: Sendable {
 	/// Registers the project's migrations on the GRDB migrator.
 	func registerMigrations(on migrator: inout DatabaseMigrator)
 }
@@ -26,51 +26,72 @@ public protocol IDatabaseMigrator {
 /// Sits in the infrastructure layer and handles low-level concerns: pool
 /// construction, GRDB configuration, running consumer-supplied migrations,
 /// and high-privilege operations such as clearing or inspecting the store.
-public protocol IDatabaseService {
-	var dbPool: DatabasePool? { get }
-	func setup(with migrator: IDatabaseMigrator?) async throws
+public protocol IDatabaseService: Sendable {
+	/// The connection pool, open from the moment the service is created.
+	var dbPool: DatabasePool { get }
+
+	/// Registers the consumer's migrations and applies the pending ones to ``dbPool``.
+	///
+	/// In debug builds the database is erased when a migration's definition changes.
+	///
+	/// - Parameter migrator: The project's migration registrar.
+	/// - Throws: Any error raised by a migration.
+	func migrate(with migrator: IDatabaseMigrator) async throws
+
+	/// Deletes every row of every user table and compacts the file.
+	///
+	/// - Throws: Any error raised by SQLite.
 	func clearDatabase() async throws
 }
 
 // MARK: - Implementation
 
-public final class DatabaseService: IDatabaseService {
+public final class DatabaseService: IDatabaseService, Sendable {
 
 	// MARK: - Properties
 
-	public private(set) var dbPool: DatabasePool?
+	public let dbPool: DatabasePool
 	private let logger: LogManager
-	private let databaseName: String
-	private let bundleID: String
 
 	// MARK: - Initialization
 
-	public init(logger: ILogger, databaseName: String, bundleID: String) {
-		self.logger = LogManager(logger: logger, category: .database)
-		self.databaseName = databaseName
-		self.bundleID = bundleID
+	/// Opens the database file and its connection pool.
+	///
+	/// The file is created at `<Application Support>/<bundleID>/<databaseName>` when it
+	/// does not exist. No migration runs here; call ``migrate(with:)`` afterwards.
+	///
+	/// - Parameters:
+	///   - logger: The sink for the service's log messages.
+	///   - databaseName: The file name of the SQLite database, for example `"app.sqlite"`.
+	///   - bundleID: The name of the Application Support sub-directory, usually the app's bundle identifier.
+	/// - Throws: An error when the directory cannot be created or the pool cannot be opened.
+	public init(logger: ILogger, databaseName: String, bundleID: String) throws {
+		let logger = LogManager(logger: logger, category: .database)
+		let databaseURL = try Self.getDatabaseURL(bundleID: bundleID, databaseName: databaseName)
+
+		self.dbPool = try DatabasePool(path: databaseURL.path, configuration: Self.makeConfiguration())
+		self.logger = logger
+
+		logger.info("Database opened at: \(databaseURL.path)")
 	}
 
 	// MARK: - Public Methods
 
-	public func setup(with projectMigrator: IDatabaseMigrator? = nil) async throws {
-		let databaseURL = try getDatabaseURL()
-		let config = try makeConfiguration()
+	public func migrate(with projectMigrator: IDatabaseMigrator) async throws {
+		var migrator = DatabaseMigrator()
 
-		dbPool = try DatabasePool(path: databaseURL.path, configuration: config)
+#if DEBUG
+		migrator.eraseDatabaseOnSchemaChange = true
+#endif
 
-		if let projectMigrator = projectMigrator {
-			try await performMigrations(with: projectMigrator)
-		}
+		// Регистрируем миграции проекта
+		projectMigrator.registerMigrations(on: &migrator)
 
-		logger.info("Database setup completed at: \(databaseURL.path)")
+		try migrator.migrate(dbPool)
+		logger.info("Database migrations completed")
 	}
 
 	public func clearDatabase() async throws {
-		guard let dbPool = dbPool else {
-			throw DatabaseError.initializationFailed("Database pool is not initialized")
-		}
-
 		try await dbPool.write { db in
 			// Получаем все пользовательские таблицы
 			let tableNames = try String.fetchAll(db, sql:
@@ -98,10 +119,6 @@ public final class DatabaseService: IDatabaseService {
 
 	/// Returns information about the on-disk size and per-table shape of the database.
 	public func getDatabaseInfo() async throws -> DatabaseInfo {
-		guard let dbPool = dbPool else {
-			throw DatabaseError.initializationFailed("Database pool is not initialized")
-		}
-
 		return try await dbPool.read { db in
 			let pageCount = try Int.fetchOne(db, sql: "PRAGMA page_count") ?? 0
 			let pageSize = try Int.fetchOne(db, sql: "PRAGMA page_size") ?? 0
@@ -139,10 +156,6 @@ public final class DatabaseService: IDatabaseService {
 
 	/// Optimizes the database: refreshes statistics, rebuilds indexes, and compacts free space.
 	public func optimizeDatabase() async throws {
-		guard let dbPool = dbPool else {
-			throw DatabaseError.initializationFailed("Database pool is not initialized")
-		}
-
 		try await dbPool.write { db in
 			// Анализируем таблицы для обновления статистики
 			try db.execute(sql: "ANALYZE")
@@ -157,7 +170,7 @@ public final class DatabaseService: IDatabaseService {
 
 	// MARK: - Private Methods
 
-	private func getDatabaseURL() throws -> URL {
+	private static func getDatabaseURL(bundleID: String, databaseName: String) throws -> URL {
 		let fileManager = FileManager.default
 		let appSupport = try fileManager.url(
 			for: .applicationSupportDirectory,
@@ -177,7 +190,7 @@ public final class DatabaseService: IDatabaseService {
 		return appFolder.appendingPathComponent(databaseName)
 	}
 
-	private func makeConfiguration() throws -> Configuration {
+	private static func makeConfiguration() -> Configuration {
 		var config = Configuration()
 		config.readonly = false
 		config.foreignKeysEnabled = true
@@ -202,23 +215,5 @@ public final class DatabaseService: IDatabaseService {
 		}
 
 		return config
-	}
-
-	private func performMigrations(with projectMigrator: IDatabaseMigrator) async throws {
-		guard let dbPool = dbPool else {
-			throw DatabaseError.initializationFailed("Database pool is not initialized")
-		}
-
-		var migrator = DatabaseMigrator()
-
-#if DEBUG
-		migrator.eraseDatabaseOnSchemaChange = true
-#endif
-
-		// Регистрируем миграции проекта
-		projectMigrator.registerMigrations(on: &migrator)
-
-		try migrator.migrate(dbPool)
-		logger.info("Database migrations completed")
 	}
 }

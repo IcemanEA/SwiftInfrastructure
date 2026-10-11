@@ -14,8 +14,8 @@ import InfraCore
 ///
 /// Every call is appended to ``entries`` as an ``Entry`` holding the level,
 /// message, and category. Nothing is printed and nothing is written to OSLog.
-/// Access is guarded by a lock, so the mock is safe to share across tasks and
-/// queues.
+/// State lives in a ``LockedState``, so the mock is safe to share across tasks,
+/// actors and queues.
 ///
 /// ```swift
 /// let logger = MockLogger()
@@ -23,7 +23,7 @@ import InfraCore
 /// // … exercise the service …
 /// #expect(logger.entries.contains { $0.level == .error })
 /// ```
-public final class MockLogger: ILogger, @unchecked Sendable {
+public final class MockLogger: ILogger, Sendable {
 
 	/// A single recorded log call.
 	public struct Entry: Equatable, Sendable {
@@ -41,23 +41,18 @@ public final class MockLogger: ILogger, @unchecked Sendable {
 		}
 	}
 
-	private let lock = NSLock()
-	private var storage: [Entry] = []
+	private let storage = LockedState<[Entry]>([])
 
 	public init() {}
 
 	/// Every recorded call, in the order it was made.
 	public var entries: [Entry] {
-		lock.lock()
-		defer { lock.unlock() }
-		return storage
+		storage.withLock { $0 }
 	}
 
 	/// Removes every recorded entry.
 	public func reset() {
-		lock.lock()
-		defer { lock.unlock() }
-		storage.removeAll()
+		storage.withLock { $0.removeAll() }
 	}
 
 	// MARK: - ILogger
@@ -70,9 +65,7 @@ public final class MockLogger: ILogger, @unchecked Sendable {
 		function: String = #function,
 		line: Int = #line
 	) {
-		lock.lock()
-		defer { lock.unlock() }
-		storage.append(Entry(level: level, message: message, category: category))
+		storage.withLock { $0.append(Entry(level: level, message: message, category: category)) }
 	}
 
 	public func verbose(_ message: String, category: LogCategory = .general, file: String = #file, function: String = #function, line: Int = #line) {

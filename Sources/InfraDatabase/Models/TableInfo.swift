@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct TableInfo {
+public struct TableInfo: Sendable {
 	public let name: String
 	public let rowCount: Int
 }

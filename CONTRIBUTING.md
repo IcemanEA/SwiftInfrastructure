@@ -111,7 +111,9 @@ The package uses Swift Testing (`import Testing`). XCTest is not used. Each test
 | `InfraUserDefaultsTests` | `UserDefaultsRepository` over an isolated suite, `UserDefaultsKey` |
 | `InfraPdfTests` | `CertificateTemplateType`, `CertificateGeneratorFactory`, `CertificateData`, `CertificateFontResolver`, system-font fallback of both generators over templates created in a temporary directory |
 | `InfraImageMetadataTests` | `ImageMetadataService` |
-| `InfraTestSupportTests` | every `Mock*` in `InfraTestSupport` |
+| `InfraNotificationsTests` | `NotificationManager` device-token delivery: waiting with timeout and cancellation, subscriber streams |
+| `InfraFileCacheTests` | `FileDownloadService` over a `URLProtocol` stub: concurrent and duplicate downloads, progress, HTTP errors, pause, resume and cancel |
+| `InfraTestSupportTests` | every `Mock*` in `InfraTestSupport`, and `LockedState` |
 
 `InfraDatabase`, `InfraFileCache` and `InfraNotifications` have no test target yet. Each needs an injectable dependency before it can be tested without touching Application Support, the network or the notification center.
 

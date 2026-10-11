@@ -20,29 +20,43 @@ import Foundation
 /// let repo = UserDefaultsRepository()
 ///
 /// // Tests:
-/// let repo = UserDefaultsRepository(userDefaults: UserDefaults(suiteName: "test")!)
+/// let repo = UserDefaultsRepository(suiteName: "test")
 ///
 /// // App Groups:
-/// let repo = UserDefaultsRepository(userDefaults: UserDefaults(suiteName: "group.com.example.myapp")!)
+/// let repo = UserDefaultsRepository(suiteName: "group.com.example.myapp")
 /// ```
-public final class UserDefaultsRepository: IUserDefaultsRepository {
+public final class UserDefaultsRepository: IUserDefaultsRepository, Sendable {
 
 	// MARK: - Properties
 
-	/// The underlying `UserDefaults` instance backing this repository.
-	private let userDefaults: UserDefaults
+	/// Name of the `UserDefaults` suite backing this repository; `nil` means `.standard`.
+	private let suiteName: String?
+
+	/// The underlying store, resolved on every access.
+	///
+	/// Not stored: `UserDefaults` is not `Sendable`, so a stored instance would
+	/// make this repository non-`Sendable`. `UserDefaults` itself is thread-safe.
+	private var userDefaults: UserDefaults {
+		guard let suiteName else { return .standard }
+		return UserDefaults(suiteName: suiteName) ?? .standard
+	}
 
 	/// Serial queue that guards access to `userDefaults` for thread-safe reads and writes.
 	private let queue = DispatchQueue(label: "infra.userdefaults.queue", qos: .utility)
 
 	// MARK: - Initialization
 
-	/// Creates the repository with a specific `UserDefaults` instance.
+	/// Creates the repository over a `UserDefaults` suite.
 	///
-	/// - Parameter userDefaults: The underlying store. Defaults to `.standard`.
-	public init(userDefaults: UserDefaults = .standard) {
-		self.userDefaults = userDefaults
-		
+	/// - Parameter suiteName: Name of the suite to use. `nil` selects `UserDefaults.standard`.
+	/// - Precondition: `UserDefaults(suiteName:)` accepts the name; the app's bundle identifier
+	///   and `NSGlobalDomain` are rejected by the system.
+	public init(suiteName: String? = nil) {
+		if let suiteName {
+			precondition(UserDefaults(suiteName: suiteName) != nil, "Invalid UserDefaults suite name: \(suiteName)")
+		}
+		self.suiteName = suiteName
+
 		// Выполняем первоначальную инициализацию
 		setupDefaultValues()
 	}

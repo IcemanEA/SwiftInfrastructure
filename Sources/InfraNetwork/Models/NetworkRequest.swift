@@ -8,7 +8,7 @@
 import Foundation
 
 /// A description of a single outbound network request.
-public protocol INetworkRequest {
+public protocol INetworkRequest: Sendable {
 	/// The HTTP method of the request.
 	var method: HTTPMethod { get }
 	/// The path appended to the builder's base URL.
@@ -27,7 +27,7 @@ extension INetworkRequest {
 	public var header: HTTPHeader? { nil }
 }
 
-public struct NetworkRequest: INetworkRequest {
+public struct NetworkRequest: INetworkRequest, Sendable {
 	public var method: HTTPMethod
 	public var path: String
 	public var parameters: Parameters?

@@ -8,7 +8,7 @@
 import Foundation
 
 /// Single text item for certificate with individual styling and positioning
-public struct CertificateTextItem {
+public struct CertificateTextItem: Sendable {
 	public let text: String
 	public let position: CGPoint
 	public let fontSize: CGFloat

@@ -29,7 +29,7 @@ import CryptoKit
 ///
 /// > Important: The salt is effectively a public constant in a public
 /// > repository — rotate it only with a coordinated migration.
-public struct DeviceCredentialsGenerator {
+public struct DeviceCredentialsGenerator: Sendable {
 
 	/// The operating-system tag used in the password-derivation input.
 	public let osType: String

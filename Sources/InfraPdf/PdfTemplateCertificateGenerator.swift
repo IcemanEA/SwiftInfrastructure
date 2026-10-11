@@ -13,7 +13,7 @@ import UIKit
 ///
 /// Generates certificates by drawing text directly into PDF content layer.
 /// Text becomes part of the PDF content, not an annotation - can only be edited with special tools.
-public final class PdfTemplateCertificateGenerator: IPdfCertificateGenerator {
+public final class PdfTemplateCertificateGenerator: IPdfCertificateGenerator, Sendable {
 
 	// MARK: - Private Properties
 

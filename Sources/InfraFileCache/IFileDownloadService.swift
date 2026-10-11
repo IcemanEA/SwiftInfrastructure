@@ -14,7 +14,7 @@ import Foundation
 /// Implementations manage downloads from remote servers into the local file
 /// system and surface progress to the caller via a closure. Every method is
 /// thread-safe. Errors are reported through ``FileDownloadError``.
-public protocol IFileDownloadService {
+public protocol IFileDownloadService: Sendable {
 
 	// MARK: - Core operations
 
@@ -28,7 +28,7 @@ public protocol IFileDownloadService {
 	func downloadFile(
 		from url: URL,
 		to localPath: String,
-		progressHandler: ((Double) -> Void)?
+		progressHandler: (@Sendable (Double) -> Void)?
 	) async -> Result<URL, FileDownloadError>
 
 	// MARK: - Download control

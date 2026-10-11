@@ -21,12 +21,12 @@ import InfraFileCache
 /// - Produces small dummy files whose contents match the requested file extension.
 /// - Emits progress callbacks on a configurable cadence.
 /// - Supports tunable behaviour via ``Configuration``.
-public final class MockFileDownloadService: IFileDownloadService {
+public actor MockFileDownloadService: IFileDownloadService {
 
 	// MARK: - Configuration
 
 	/// Tunable parameters controlling mock-download behaviour.
-	public struct Configuration {
+	public struct Configuration: Sendable {
 		/// How often the mock fires progress callbacks, in seconds.
 		public var progressUpdateInterval: TimeInterval = 0.1
 
@@ -54,7 +54,6 @@ public final class MockFileDownloadService: IFileDownloadService {
 
 	private let configuration: Configuration
 	private var activeDownloads: [String: DownloadTask] = [:]
-	private let queue = DispatchQueue(label: "mock.file.download", qos: .utility)
 
 	// MARK: - Initialization
 
@@ -67,7 +66,7 @@ public final class MockFileDownloadService: IFileDownloadService {
 	public func downloadFile(
 		from url: URL,
 		to localPath: String,
-		progressHandler: ((Double) -> Void)?
+		progressHandler: (@Sendable (Double) -> Void)?
 	) async -> Result<URL, FileDownloadError> {
 
 		let taskKey = makeTaskKey(url: url, localPath: localPath)
@@ -183,7 +182,7 @@ public final class MockFileDownloadService: IFileDownloadService {
 
 	private func performMockDownload(
 		task: DownloadTask,
-		progressHandler: ((Double) -> Void)?
+		progressHandler: (@Sendable (Double) -> Void)?
 	) async throws -> URL {
 
 		let totalSteps = Int(configuration.totalDownloadTime / configuration.progressUpdateInterval)

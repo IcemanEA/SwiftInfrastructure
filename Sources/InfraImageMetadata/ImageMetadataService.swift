@@ -9,7 +9,7 @@ import UIKit
 import ImageIO
 
 /// A service for reading image metadata (dimensions, aspect ratio) without a full decode.
-public final class ImageMetadataService {
+public final class ImageMetadataService: Sendable {
 
 	/// Returns the pixel dimensions of an image on disk, reading only its header via `ImageIO`.
 	public static func getImageDimensions(from localURL: URL) -> CGSize? {

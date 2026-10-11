@@ -8,7 +8,7 @@
 import Foundation
 
 /// Data structure for certificate text positioning and styling
-public struct CertificateData {
+public struct CertificateData: Sendable {
 	public let textItems: [CertificateTextItem]
 	
 	public init(textItems: [CertificateTextItem]) {

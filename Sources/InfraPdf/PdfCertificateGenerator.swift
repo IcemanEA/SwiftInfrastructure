@@ -10,7 +10,7 @@ import SwiftUI
 import UIKit
 
 /// PDF certificate generator implementation using UIKit for JPG templates
-public final class PdfCertificateGenerator: IPdfCertificateGenerator {
+public final class PdfCertificateGenerator: IPdfCertificateGenerator, Sendable {
 
 	// MARK: - Private Properties
 

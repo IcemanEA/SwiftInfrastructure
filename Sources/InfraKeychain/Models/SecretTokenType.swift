@@ -8,7 +8,7 @@
 import Foundation
 
 /// The kind of secret stored in secure storage. Each value is a stable string used as the Keychain account suffix.
-public enum SecretTokenType: String, CaseIterable {
+public enum SecretTokenType: String, CaseIterable, Sendable {
 	/// A JWT used for API authentication.
 	case jwtToken = "jwt_token"
 

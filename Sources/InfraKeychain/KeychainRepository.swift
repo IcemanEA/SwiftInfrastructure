@@ -7,7 +7,7 @@
 
 import Foundation
 
-public final class KeychainRepository: IKeychainRepository {
+public final class KeychainRepository: IKeychainRepository, Sendable {
 
 	private let service: String = "secrets"
 	private let prefix: String

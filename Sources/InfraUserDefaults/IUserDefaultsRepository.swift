@@ -46,7 +46,7 @@ import Foundation
 ///
 /// Implementations must be thread-safe — `UserDefaults` can be accessed
 /// concurrently from multiple threads.
-public protocol IUserDefaultsRepository {
+public protocol IUserDefaultsRepository: Sendable {
 
 	// MARK: - Generic Methods
 

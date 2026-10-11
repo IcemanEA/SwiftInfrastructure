@@ -13,7 +13,7 @@ import Foundation
 /// operations commonly needed inside an app: existence checks, directory
 /// creation, moves, removals, attribute reads, system-directory lookup, and
 /// a bulk cache-clear helper.
-public protocol IAppFileManager {
+public protocol IAppFileManager: Sendable {
 
 	/// Returns whether a file exists at the given path.
 	func fileExists(atPath path: String) -> Bool

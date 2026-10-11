@@ -8,6 +8,6 @@
 import Foundation
 
 /// A placeholder response type used when the server returns `204 No Content` but the call site still needs a typed success value.
-public struct EmptyResponse: Codable {
+public struct EmptyResponse: Codable, Sendable {
 	public init() {}
 }

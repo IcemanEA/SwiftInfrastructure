@@ -8,7 +8,7 @@
 import Foundation
 
 /// A `username` / `password` pair used for HTTP Basic authentication, typically on registration requests.
-public struct BasicAuth {
+public struct BasicAuth: Sendable {
 	public let username: String
 	public let password: String
 

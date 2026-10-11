@@ -8,13 +8,13 @@
 import Foundation
 
 /// The body payload of an HTTP request.
-public enum HTTPBody {
+public enum HTTPBody: Sendable {
 	/// A JSON object represented as a dictionary.
-	case json([String: Any])
+	case json([String: any Sendable])
 	/// URL-encoded form data — usually used for `POST`ing HTML forms. Values are supplied as a dictionary.
-	case formData([String: Any])
+	case formData([String: any Sendable])
 	/// A JSON array of objects.
-	case jsonArray([[String: Any]])
+	case jsonArray([[String: any Sendable]])
 	/// Arbitrary binary data with an explicit content type.
 	case data(Data, ContentType)
 	

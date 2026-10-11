@@ -7,7 +7,7 @@
 
 import Foundation
 
-public struct DatabaseInfo {
+public struct DatabaseInfo: Sendable {
 	public let totalSizeBytes: Int
 	public let usedSizeBytes: Int
 	public let freeSizeBytes: Int

@@ -29,6 +29,6 @@ enum UserDefaultsRepositoryTestFactory {
 	}
 
 	static func makeRepository(over suite: IsolatedUserDefaults) -> UserDefaultsRepository {
-		UserDefaultsRepository(userDefaults: suite.defaults)
+		UserDefaultsRepository(suiteName: suite.suiteName)
 	}
 }

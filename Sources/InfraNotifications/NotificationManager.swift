@@ -10,24 +10,27 @@ import UIKit
 import UserNotifications
 import InfraCore
 
-public final class NotificationManager: INotificationManager {
+public final class NotificationManager: INotificationManager, Sendable {
 
 	// MARK: - Private Properties
 
-	private let center: UNUserNotificationCenter
 	private let logger: LogManager
-	private var tokenCompletions: [(String) -> Void] = []
-	private var lastReceivedToken: String?
+	private let tokenBroker = DeviceTokenBroker()
 
 	// MARK: - Initialization
 
-	public init(
-		center: UNUserNotificationCenter = .current(),
-		logger: LogManager
-	) {
-		self.center = center
+	/// Creates the manager over the app's shared notification center.
+	///
+	/// - Parameter logger: The sink for the manager's log messages.
+	public init(logger: LogManager) {
 		self.logger = logger
 	}
+
+	/// The app's shared notification center, looked up on each use.
+	///
+	/// Not stored: `UNUserNotificationCenter` is not `Sendable`, so a stored instance
+	/// would make this manager non-`Sendable`.
+	private var center: UNUserNotificationCenter { .current() }
 
 	// MARK: - Public Methods
 
@@ -54,26 +57,16 @@ public final class NotificationManager: INotificationManager {
 		return NotificationAuthorizationStatus(from: settings.authorizationStatus)
 	}
 
-	public func waitForDeviceToken(completion: @escaping (String) -> Void) {
-		// Если токен уже был получен, вызываем completion сразу
-		if let token = lastReceivedToken {
-			completion(token)
-		} else {
-			// Иначе сохраняем completion для вызова позже
-			tokenCompletions.append(completion)
-		}
+	public func deviceToken(timeout: TimeInterval) async -> String? {
+		await tokenBroker.token(timeout: timeout)
 	}
 
-	public func notifyTokenReceived(_ token: String) {
-		lastReceivedToken = token
+	public func deviceTokens() -> AsyncStream<String> {
+		tokenBroker.tokens()
+	}
 
-		// Вызываем все ожидающие completions
-		for completion in tokenCompletions {
-			completion(token)
-		}
-
-		// Очищаем массив completions
-		tokenCompletions.removeAll()
+	public func notifyTokenReceived(_ token: String) async {
+		await tokenBroker.notify(token)
 	}
 
 	public func scheduleNotification(

@@ -16,7 +16,7 @@ Reusable iOS infrastructure layer extracted from a production app. Granular Swif
 
 - iOS 15+
 - Swift tools 6.2+
-- Swift language mode 5
+- Swift language mode 6
 
 ## Products
 
@@ -114,12 +114,12 @@ struct MyMigrator: IDatabaseMigrator {
     }
 }
 
-let db = DatabaseService(
+let db = try DatabaseService(
     logger: logger,
     databaseName: "app.sqlite",
     bundleID: "com.example.myapp"
 )
-try await db.setup(with: MyMigrator())
+try await db.migrate(with: MyMigrator())
 ```
 
 ### InfraNetwork — build and fetch a request
@@ -177,12 +177,23 @@ if !completed {
 ### InfraNotifications — request permission and schedule
 
 ```swift
+import InfraCore
 import InfraNotifications
 
-let manager: INotificationManager = NotificationManager(/* … */)
+let manager: INotificationManager = NotificationManager(
+    logger: LogManager(logger: logger, category: .general)
+)
 
 let granted = await manager.requestPermission()
 guard granted else { return }
+
+// In application(_:didRegisterForRemoteNotificationsWithDeviceToken:):
+//     Task { await manager.notifyTokenReceived(manager.convertTokenToString(deviceToken)) }
+
+// Wait for the APNs token, giving up after 10 seconds:
+if let token = await manager.deviceToken(timeout: 10) {
+    print("APNs token: \(token)")
+}
 
 _ = await manager.scheduleNotification(
     id: "reminder-1",
@@ -289,13 +300,26 @@ struct AuthFlowTests {
 
 `InfraTestSupport` should be linked **only from test targets**. Using `MockKeychainRepository.withRealData()` or `.withFailures()` factory methods covers common fixture scenarios.
 
+Every mock is `Sendable`, so it can be handed to an actor under test. To write your own double of a protocol with synchronous requirements, keep its state in `LockedState`, which an actor cannot replace there:
+
+```swift
+final class InMemoryStore: IUserDefaultsRepository, Sendable {
+    private let values = LockedState<[UserDefaultsKey: Any]>([:])
+
+    func setValue(_ value: Any?, for key: UserDefaultsKey) {
+        values.withLock { $0[key] = value }
+    }
+    // …
+}
+```
+
 ## Compatibility
 
 | | |
 |---|---|
 | Platforms | iOS 15+ |
 | Swift tools | 6.2+ |
-| Swift language mode | 5 |
+| Swift language mode | 6 |
 | External deps | `GRDB.swift` `.upToNextMinor(from: "7.7.1")` — linked only from `InfraDatabase` |
 
 `swift build` on macOS fails with a diagnostic about GRDB requiring macOS 10.15 — the package is iOS-only. Use Xcode or `xcodebuild -destination 'generic/platform=iOS Simulator' build`.

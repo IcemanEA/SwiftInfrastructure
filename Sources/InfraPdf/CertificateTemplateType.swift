@@ -8,7 +8,7 @@
 import Foundation
 
 /// The kind of certificate template the factory will dispatch to — a raster image or a PDF.
-public enum CertificateTemplateType {
+public enum CertificateTemplateType: Sendable {
 	case image
 	case pdf
 

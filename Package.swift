@@ -57,11 +57,13 @@ let package = Package(
 		),
 		.testTarget(name: "InfraCoreTests",          dependencies: ["InfraCore", "InfraTestSupport"]),
 		.testTarget(name: "InfraNetworkTests",       dependencies: ["InfraNetwork", "InfraCore", "InfraTestSupport"]),
-		.testTarget(name: "InfraKeychainTests",      dependencies: ["InfraKeychain"]),
+		.testTarget(name: "InfraKeychainTests",      dependencies: ["InfraKeychain", "InfraTestSupport"]),
 		.testTarget(name: "InfraSearchTests",        dependencies: ["InfraSearch"]),
 		.testTarget(name: "InfraUserDefaultsTests",  dependencies: ["InfraUserDefaults", "InfraTestSupport"]),
 		.testTarget(name: "InfraPdfTests",           dependencies: ["InfraPdf", "InfraTestSupport"]),
 		.testTarget(name: "InfraImageMetadataTests", dependencies: ["InfraImageMetadata"]),
+		.testTarget(name: "InfraNotificationsTests", dependencies: ["InfraNotifications", "InfraCore", "InfraTestSupport"]),
+		.testTarget(name: "InfraFileCacheTests",     dependencies: ["InfraFileCache", "InfraCore", "InfraTestSupport"]),
 		.testTarget(
 			name: "InfraTestSupportTests",
 			dependencies: [
@@ -75,5 +77,5 @@ let package = Package(
 			]
 		)
 	],
-	swiftLanguageModes: [.v5]
+	swiftLanguageModes: [.v6]
 )

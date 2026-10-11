@@ -8,7 +8,7 @@
 import Foundation
 
 /// HTTP response status buckets, each carrying the numeric status code.
-public enum ResponseStatus {
+public enum ResponseStatus: Sendable {
 	/// Informational response — `1xx`.
 	case information(Int)
 	/// Successful response — `2xx`.

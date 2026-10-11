@@ -10,7 +10,7 @@ import Foundation
 public typealias HTTPHeader = [String: String]
 
 /// Frequently used HTTP header fields, modelled so call sites don't hand-roll header strings.
-public enum HeaderField {
+public enum HeaderField: Sendable {
 	/// The `Authorization: Basic …` header built from a ``BasicAuth`` pair.
 	case basicAuth(BasicAuth)
 
