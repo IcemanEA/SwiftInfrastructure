@@ -22,48 +22,47 @@ import InfraPdf
 /// let output = try await generator.generateCertificate(templateImagePath: "t.png", certificateData: data)
 /// #expect(generator.recordedTemplatePaths == ["t.png"])
 /// ```
-public final class MockPdfCertificateGenerator: IPdfCertificateGenerator, @unchecked Sendable {
+public final class MockPdfCertificateGenerator: IPdfCertificateGenerator, Sendable {
 
-	private let lock = NSLock()
-	private var storedResult: (previewData: Data, pdfData: Data) = (Data(), Data())
-	private var storedError: Error?
-	private var storedPaths: [String] = []
+	private struct State {
+		var result: (previewData: Data, pdfData: Data) = (Data(), Data())
+		var error: Error?
+		var paths: [String] = []
+	}
+
+	private let state = LockedState(State())
 
 	public init() {}
 
 	/// The value returned by ``generateCertificate(templateImagePath:certificateData:)`` when no error is configured.
 	public var result: (previewData: Data, pdfData: Data) {
-		get { lock.lock(); defer { lock.unlock() }; return storedResult }
-		set { lock.lock(); defer { lock.unlock() }; storedResult = newValue }
+		get { state.withLock { $0.result } }
+		set { state.withLock { $0.result = newValue } }
 	}
 
 	/// The error thrown by ``generateCertificate(templateImagePath:certificateData:)``; `nil` means succeed.
 	public var errorToThrow: Error? {
-		get { lock.lock(); defer { lock.unlock() }; return storedError }
-		set { lock.lock(); defer { lock.unlock() }; storedError = newValue }
+		get { state.withLock { $0.error } }
+		set { state.withLock { $0.error = newValue } }
 	}
 
 	/// The template paths passed to every call, in call order.
 	public var recordedTemplatePaths: [String] {
-		lock.lock()
-		defer { lock.unlock() }
-		return storedPaths
+		state.withLock { $0.paths }
 	}
 
 	public func generateCertificate(
 		templateImagePath: String,
 		certificateData: CertificateData
 	) async throws -> (previewData: Data, pdfData: Data) {
-		let (result, error): ((Data, Data), Error?) = {
-			lock.lock()
-			defer { lock.unlock() }
-			storedPaths.append(templateImagePath)
-			return (storedResult, storedError)
-		}()
+		let (result, error) = state.withLock { state in
+			state.paths.append(templateImagePath)
+			return (state.result, state.error)
+		}
 
 		if let error {
 			throw error
 		}
-		return (previewData: result.0, pdfData: result.1)
+		return result
 	}
 }

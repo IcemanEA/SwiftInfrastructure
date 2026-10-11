@@ -4,17 +4,21 @@
 
 import Foundation
 
-public final class AppFileManager: IAppFileManager {
+public final class AppFileManager: IAppFileManager, Sendable {
 
 	// MARK: - Properties
 
-	private let fileManager: FileManager
 	private let logger: LogManager
+
+	/// The shared file manager, which is safe to call from any thread.
+	///
+	/// Not stored: `FileManager` is not `Sendable`, so a stored instance would
+	/// make this service non-`Sendable`.
+	private var fileManager: FileManager { .default }
 
 	// MARK: - Инициализация
 
-	public init(fileManager: FileManager = .default, logger: ILogger) {
-		self.fileManager = fileManager
+	public init(logger: ILogger) {
 		self.logger = LogManager(logger: logger, category: .files)
 	}
 

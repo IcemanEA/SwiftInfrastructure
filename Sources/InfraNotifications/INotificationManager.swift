@@ -8,7 +8,7 @@
 import Foundation
 
 /// A manager for push and local notifications — permission, device-token plumbing, and scheduling.
-public protocol INotificationManager {
+public protocol INotificationManager: Sendable {
 
 	/// Requests the user's permission to deliver notifications.
 	///
@@ -20,15 +20,32 @@ public protocol INotificationManager {
 	/// - Returns: The current authorization status (`authorized`, `denied`, `notDetermined`, etc.).
 	func getAuthorizationStatus() async -> NotificationAuthorizationStatus
 
-	/// Invokes the closure when an APNS device token becomes available.
+	/// Returns the APNs device token, waiting for it when none has been reported yet.
 	///
-	/// - Parameter completion: A closure called with the token string once it has been registered.
-	func waitForDeviceToken(completion: @escaping (String) -> Void)
+	/// Returns the most recently reported token at once. Otherwise waits for the next
+	/// call to ``notifyTokenReceived(_:)``. Returns `nil` when the timeout elapses first
+	/// or when the calling task is cancelled.
+	///
+	/// - Parameter timeout: The longest time to wait, in seconds. `.infinity` waits until a
+	///   token arrives or the task is cancelled; a negative value or NaN does not wait.
+	/// - Returns: The token, or `nil` on timeout or cancellation.
+	func deviceToken(timeout: TimeInterval) async -> String?
 
-	/// Notifies the manager that a device token has been received from APNS.
+	/// Returns a stream of APNs device tokens.
+	///
+	/// The stream first yields the most recent token known when the subscription takes
+	/// effect, if there is one, and then every reported token that differs from the
+	/// last one it yielded. Each call returns an independent stream; ending the
+	/// iteration stops delivery to it.
+	///
+	/// - Returns: A stream that never finishes on its own.
+	func deviceTokens() -> AsyncStream<String>
+
+	/// Reports a device token received from APNs, typically from
+	/// `application(_:didRegisterForRemoteNotificationsWithDeviceToken:)`.
 	///
 	/// - Parameter token: The token string.
-	func notifyTokenReceived(_ token: String)
+	func notifyTokenReceived(_ token: String) async
 
 	/// Schedules a local notification to fire after a delay.
 	///

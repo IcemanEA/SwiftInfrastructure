@@ -13,7 +13,7 @@ import Foundation
 ///
 /// Enumerates every error a file-download service can surface. Each case
 /// carries a human-readable description via ``CustomStringConvertible``.
-public enum FileDownloadError: Error {
+public enum FileDownloadError: Error, Sendable {
 
 	// MARK: - System errors
 

@@ -59,7 +59,7 @@
 /// Implementations must be thread-safe — tokens may be updated from any
 /// thread (for example when an FCM token refresh arrives on a background
 /// queue).
-public protocol IKeychainRepository {
+public protocol IKeychainRepository: Sendable {
 
 	/// Reads a secret token from secure storage.
 	///

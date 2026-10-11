@@ -45,13 +45,27 @@ struct MockNotificationManagerTests {
 		#expect(sut.scheduleNotificationCalled)
 	}
 
-	@Test("waitForDeviceToken delivers a mock token immediately")
-	func immediateTokenDelivery() {
-		var received: String?
+	@Test("deviceToken returns the default token without waiting")
+	func defaultToken() async {
+		#expect(await sut.deviceToken(timeout: 0) == "mock_device_token")
+	}
 
-		sut.waitForDeviceToken { received = $0 }
+	@Test("deviceToken returns the last reported token")
+	func reportedToken() async {
+		await sut.notifyTokenReceived("t2")
 
-		#expect(received == "mock_device_token")
+		#expect(await sut.deviceToken(timeout: 0) == "t2")
+		#expect(sut.reportedTokens == ["t2"])
+	}
+
+	@Test("deviceTokens yields the default token and then every reported token")
+	func reportedTokenReachesSubscriber() async {
+		var iterator = sut.deviceTokens().makeAsyncIterator()
+
+		await sut.notifyTokenReceived("t2")
+
+		#expect(await iterator.next() == "mock_device_token")
+		#expect(await iterator.next() == "t2")
 	}
 
 	@Test("cancelNotification records the identifier")

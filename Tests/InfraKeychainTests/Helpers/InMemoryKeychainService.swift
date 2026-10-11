@@ -6,6 +6,7 @@
 //
 
 @testable import InfraKeychain
+import InfraTestSupport
 
 /// An in-memory stand-in for the Keychain, injected into `KeychainRepository` so tests never call `SecItem*`.
 ///
@@ -19,8 +20,8 @@
 /// | `getSecret`       | the value                       | `nil`                        |
 /// | `clearAllSecrets` | removes everything, `true`      | `true`                       |
 ///
-/// Each test owns its own instance, so no synchronisation is needed.
-final class InMemoryKeychainService: IKeychainService {
+/// State lives in a ``LockedState`` so the store is `Sendable`, as `IKeychainService` requires.
+final class InMemoryKeychainService: IKeychainService, Sendable {
 
 	struct Key: Hashable {
 		let service: String
@@ -35,44 +36,65 @@ final class InMemoryKeychainService: IKeychainService {
 		case clearAll
 	}
 
-	/// When `true`, add, update and delete fail without changing the store.
-	var failsWrites = false
+	private struct State {
+		var failsWrites = false
+		var items: [Key: String] = [:]
+		var operations: [Operation] = []
+	}
 
-	private(set) var items: [Key: String] = [:]
-	private(set) var operations: [Operation] = []
+	private let state = LockedState(State())
+
+	/// When `true`, add, update and delete fail without changing the store.
+	var failsWrites: Bool {
+		get { state.withLock { $0.failsWrites } }
+		set { state.withLock { $0.failsWrites = newValue } }
+	}
+
+	var items: [Key: String] { state.withLock { $0.items } }
+	var operations: [Operation] { state.withLock { $0.operations } }
 
 	func getSecret(service: String, account: String) -> String? {
-		operations.append(.get(account: account))
-		return items[Key(service: service, account: account)]
+		state.withLock { state in
+			state.operations.append(.get(account: account))
+			return state.items[Key(service: service, account: account)]
+		}
 	}
 
 	func saveSecret(service: String, account: String, secret: String) -> Bool {
-		operations.append(.add(account: account))
-		let key = Key(service: service, account: account)
-		guard !failsWrites, items[key] == nil else { return false }
-		items[key] = secret
-		return true
+		state.withLock { state in
+			state.operations.append(.add(account: account))
+			let key = Key(service: service, account: account)
+			guard !state.failsWrites, state.items[key] == nil else { return false }
+			state.items[key] = secret
+			return true
+		}
 	}
 
 	func deleteSecret(service: String, account: String) -> Bool {
-		operations.append(.delete(account: account))
-		let key = Key(service: service, account: account)
-		guard !failsWrites, items[key] != nil else { return false }
-		items[key] = nil
-		return true
+		state.withLock { state in
+			state.operations.append(.delete(account: account))
+			let key = Key(service: service, account: account)
+			guard !state.failsWrites, state.items[key] != nil else { return false }
+			state.items[key] = nil
+			return true
+		}
 	}
 
 	func updateSecret(service: String, account: String, secret: String) -> Bool {
-		operations.append(.update(account: account))
-		let key = Key(service: service, account: account)
-		guard !failsWrites, items[key] != nil else { return false }
-		items[key] = secret
-		return true
+		state.withLock { state in
+			state.operations.append(.update(account: account))
+			let key = Key(service: service, account: account)
+			guard !state.failsWrites, state.items[key] != nil else { return false }
+			state.items[key] = secret
+			return true
+		}
 	}
 
 	func clearAllSecrets() -> Bool {
-		operations.append(.clearAll)
-		items.removeAll()
-		return true
+		state.withLock { state in
+			state.operations.append(.clearAll)
+			state.items.removeAll()
+			return true
+		}
 	}
 }

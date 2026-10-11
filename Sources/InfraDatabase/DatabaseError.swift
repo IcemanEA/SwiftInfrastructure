@@ -15,7 +15,7 @@ import GRDB
 /// Enumerates every failure mode that may surface when working with the
 /// database through GRDB. Cases are grouped by category of problem to make
 /// handling — and any user-facing messages — more precise.
-public enum DatabaseError: Error {
+public enum DatabaseError: Error, Sendable {
 
 	// MARK: - Data errors
 

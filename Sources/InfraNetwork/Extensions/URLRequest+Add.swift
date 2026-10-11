@@ -18,11 +18,11 @@ extension URLRequest {
 	public mutating func add(body: HTTPBody) {
 		switch body {
 		case .json(let dictionary):
-			httpBody = try? JSONSerialization.data(withJSONObject: dictionary)
+			httpBody = try? JSONSerialization.data(withJSONObject: dictionary as [String: Any])
 		case .formData(let dictionary):
 			httpBody = URLComponents().setParameters(dictionary).query?.data(using: .utf8)
 		case .jsonArray(let array):
-			httpBody = try? JSONSerialization.data(withJSONObject: array)
+			httpBody = try? JSONSerialization.data(withJSONObject: array as [[String: Any]])
 		case .data(let data, _):
 			httpBody = data
 		}

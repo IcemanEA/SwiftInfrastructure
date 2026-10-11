@@ -62,26 +62,24 @@ import InfraKeychain
 ///         .environmentObject(mockRepo)
 /// }
 /// ```
-public final class MockKeychainRepository: IKeychainRepository {
+public final class MockKeychainRepository: IKeychainRepository, Sendable {
 	
 	// MARK: - Private Properties
 	
-	/// The in-memory token store.
-	private var tokens: [SecretTokenType: SecretToken] = [:]
+	/// The in-memory store, failure-simulation flags and per-method call counters.
+	private struct State {
+		var tokens: [SecretTokenType: SecretToken] = [:]
+		var shouldFailSave = false
+		var shouldFailUpdate = false
+		var shouldFailDelete = false
+		var saveCallCount = 0
+		var updateCallCount = 0
+		var deleteCallCount = 0
+		var getCallCount = 0
+	}
 
-	/// Failure-simulation flags used to exercise error paths in tests.
-	private var shouldFailSave = false
-	private var shouldFailUpdate = false
-	private var shouldFailDelete = false
-
-	/// Per-method invocation counters for assertion in tests.
-	private var saveCallCount = 0
-	private var updateCallCount = 0
-	private var deleteCallCount = 0
-	private var getCallCount = 0
-
-	/// Concurrent queue that guards access to the in-memory store.
-	private let queue = DispatchQueue(label: "MockKeychainRepository", attributes: .concurrent)
+	/// Guards every piece of mutable state, so the mock is `Sendable`.
+	private let state: LockedState<State>
 
 	/// Receives a message for every operation when a logger is injected; `nil` keeps the mock silent.
 	private let logger: LogManager?
@@ -95,18 +93,19 @@ public final class MockKeychainRepository: IKeychainRepository {
 	///   - logger: A logger that receives a message for every operation under the `.repository` category. Defaults to `nil`, which keeps the mock silent.
 	public init(presetTokens: [SecretTokenType: String] = [:], logger: ILogger? = nil) {
 		self.logger = logger.map { LogManager(logger: $0, category: .repository) }
+		var initial = State()
 		for (type, value) in presetTokens {
-			let token = SecretToken(type: type, rawValue: value)
-			tokens[type] = token
+			initial.tokens[type] = SecretToken(type: type, rawValue: value)
 		}
+		self.state = LockedState(initial)
 	}
 	
 	// MARK: - IKeychainRepository Implementation
 	
 	public func getSecret(for type: SecretTokenType) -> SecretToken? {
-		return queue.sync {
-			getCallCount += 1
-			let token = tokens[type]
+		return state.withLock { state in
+			state.getCallCount += 1
+			let token = state.tokens[type]
 			
 			logger?.debug("🔍 MockRepo: Getting secret for \(type) - \(token != nil ? "Found" : "Not found")")
 			return token
@@ -114,31 +113,31 @@ public final class MockKeychainRepository: IKeychainRepository {
 	}
 	
 	public func saveSecret(_ token: SecretToken) -> Bool {
-		return queue.sync(flags: .barrier) {
-			saveCallCount += 1
+		return state.withLock { state in
+			state.saveCallCount += 1
 			
-			if shouldFailSave {
+			if state.shouldFailSave {
 				logger?.warning("❌ MockRepo: Save failed (simulated) for \(token.type)")
 				return false
 			}
 			
-			tokens[token.type] = token
+			state.tokens[token.type] = token
 			logger?.debug("✅ MockRepo: Saved secret for \(token.type)")
 			return true
 		}
 	}
 	
 	public func deleteSecret(for type: SecretTokenType) -> Bool {
-		return queue.sync(flags: .barrier) {
-			deleteCallCount += 1
+		return state.withLock { state in
+			state.deleteCallCount += 1
 			
-			if shouldFailDelete {
+			if state.shouldFailDelete {
 				logger?.warning("❌ MockRepo: Delete failed (simulated) for \(type)")
 				return false
 			}
 			
-			let existed = tokens[type] != nil
-			tokens.removeValue(forKey: type)
+			let existed = state.tokens[type] != nil
+			state.tokens.removeValue(forKey: type)
 			
 			logger?.debug("🗑️ MockRepo: Deleted secret for \(type) - \(existed ? "existed" : "didn't exist")")
 			return true
@@ -146,16 +145,16 @@ public final class MockKeychainRepository: IKeychainRepository {
 	}
 	
 	public func updateSecret(_ token: SecretToken) -> Bool {
-		return queue.sync(flags: .barrier) {
-			updateCallCount += 1
+		return state.withLock { state in
+			state.updateCallCount += 1
 			
-			if shouldFailUpdate {
+			if state.shouldFailUpdate {
 				logger?.warning("❌ MockRepo: Update failed (simulated) for \(token.type)")
 				return false
 			}
 			
-			let existed = tokens[token.type] != nil
-			tokens[token.type] = token
+			let existed = state.tokens[token.type] != nil
+			state.tokens[token.type] = token
 			
 			logger?.debug("🔄 MockRepo: Updated secret for \(token.type) - \(existed ? "replaced existing" : "created new")")
 			return true
@@ -170,9 +169,9 @@ public final class MockKeychainRepository: IKeychainRepository {
 	///   - type: The kind of token to seed.
 	///   - value: The raw token value.
 	public func presetToken(_ type: SecretTokenType, value: String) {
-		queue.sync(flags: .barrier) {
+		state.withLock { state in
 			let token = SecretToken(type: type, rawValue: value)
-			tokens[type] = token
+			state.tokens[type] = token
 			logger?.debug("⚙️ MockRepo: Preset token for \(type)")
 		}
 	}
@@ -181,8 +180,8 @@ public final class MockKeychainRepository: IKeychainRepository {
 	///
 	/// - Parameter shouldFail: `true` to make every subsequent `saveSecret` return `false`.
 	public func simulateSaveFailure(_ shouldFail: Bool = true) {
-		queue.sync(flags: .barrier) {
-			shouldFailSave = shouldFail
+		state.withLock { state in
+			state.shouldFailSave = shouldFail
 			logger?.debug("⚙️ MockRepo: Save failure simulation \(shouldFail ? "enabled" : "disabled")")
 		}
 	}
@@ -191,8 +190,8 @@ public final class MockKeychainRepository: IKeychainRepository {
 	///
 	/// - Parameter shouldFail: `true` to make every subsequent `updateSecret` return `false`.
 	public func simulateUpdateFailure(_ shouldFail: Bool = true) {
-		queue.sync(flags: .barrier) {
-			shouldFailUpdate = shouldFail
+		state.withLock { state in
+			state.shouldFailUpdate = shouldFail
 			logger?.debug("⚙️ MockRepo: Update failure simulation \(shouldFail ? "enabled" : "disabled")")
 		}
 	}
@@ -201,18 +200,18 @@ public final class MockKeychainRepository: IKeychainRepository {
 	///
 	/// - Parameter shouldFail: `true` to make every subsequent `deleteSecret` return `false`.
 	public func simulateDeleteFailure(_ shouldFail: Bool = true) {
-		queue.sync(flags: .barrier) {
-			shouldFailDelete = shouldFail
+		state.withLock { state in
+			state.shouldFailDelete = shouldFail
 			logger?.debug("⚙️ MockRepo: Delete failure simulation \(shouldFail ? "enabled" : "disabled")")
 		}
 	}
 	
 	/// Disables every failure-simulation flag.
 	public func resetFailureSimulations() {
-		queue.sync(flags: .barrier) {
-			shouldFailSave = false
-			shouldFailUpdate = false
-			shouldFailDelete = false
+		state.withLock { state in
+			state.shouldFailSave = false
+			state.shouldFailUpdate = false
+			state.shouldFailDelete = false
 			logger?.debug("⚙️ MockRepo: All failure simulations reset")
 		}
 	}
@@ -221,16 +220,16 @@ public final class MockKeychainRepository: IKeychainRepository {
 	
 	/// Removes every token from the in-memory store.
 	public func clearAllTokens() {
-		queue.sync(flags: .barrier) {
-			tokens.removeAll()
+		state.withLock { state in
+			state.tokens.removeAll()
 			logger?.debug("🧹 MockRepo: All tokens cleared")
 		}
 	}
 	
 	/// The number of tokens currently stored.
 	public var tokenCount: Int {
-		return queue.sync {
-			return tokens.count
+		return state.withLock { state in
+			return state.tokens.count
 		}
 	}
 	
@@ -239,51 +238,51 @@ public final class MockKeychainRepository: IKeychainRepository {
 	/// - Parameter type: The token kind to check.
 	/// - Returns: `true` when a token of that type exists in the store.
 	public func hasToken(for type: SecretTokenType) -> Bool {
-		return queue.sync {
-			return tokens[type] != nil
+		return state.withLock { state in
+			return state.tokens[type] != nil
 		}
 	}
 	
 	/// The token types currently present in the store.
 	public var availableTokenTypes: [SecretTokenType] {
-		return queue.sync {
-			return Array(tokens.keys)
+		return state.withLock { state in
+			return Array(state.tokens.keys)
 		}
 	}
 	
 	/// A snapshot of per-method invocation counters, for assertion in tests.
 	public var callCounts: (save: Int, update: Int, delete: Int, get: Int) {
-		return queue.sync {
-			return (save: saveCallCount, update: updateCallCount, delete: deleteCallCount, get: getCallCount)
+		return state.withLock { state in
+			return (save: state.saveCallCount, update: state.updateCallCount, delete: state.deleteCallCount, get: state.getCallCount)
 		}
 	}
 	
 	/// Resets every invocation counter back to zero.
 	public func resetCallCounts() {
-		queue.sync(flags: .barrier) {
-			saveCallCount = 0
-			updateCallCount = 0
-			deleteCallCount = 0
-			getCallCount = 0
+		state.withLock { state in
+			state.saveCallCount = 0
+			state.updateCallCount = 0
+			state.deleteCallCount = 0
+			state.getCallCount = 0
 			logger?.debug("📊 MockRepo: Call counts reset")
 		}
 	}
 	
 	/// Prints the current state of the mock — stored tokens, call counts, and simulation flags — to the console.
 	public func printCurrentState() {
-		queue.sync {
+		state.withLock { state in
 			print("📊 MockRepo State:")
-			print("  - Tokens count: \(tokens.count)")
-			print("  - Available types: \(tokens.keys.map { $0.rawValue })")
-			print("  - Call counts: save(\(saveCallCount)), update(\(updateCallCount)), delete(\(deleteCallCount)), get(\(getCallCount))")
-			print("  - Failure simulations: save(\(shouldFailSave)), update(\(shouldFailUpdate)), delete(\(shouldFailDelete))")
+			print("  - Tokens count: \(state.tokens.count)")
+			print("  - Available types: \(state.tokens.keys.map { $0.rawValue })")
+			print("  - Call counts: save(\(state.saveCallCount)), update(\(state.updateCallCount)), delete(\(state.deleteCallCount)), get(\(state.getCallCount))")
+			print("  - Failure simulations: save(\(state.shouldFailSave)), update(\(state.shouldFailUpdate)), delete(\(state.shouldFailDelete))")
 		}
 	}
 	
 	public func clearAllSecrets() -> Bool {
-		return queue.sync(flags: .barrier) {
-			let tokenCount = tokens.count
-			tokens.removeAll()
+		return state.withLock { state in
+			let tokenCount = state.tokens.count
+			state.tokens.removeAll()
 			logger?.debug("🧹 MockRepo: Cleared all secrets (\(tokenCount) tokens removed)")
 			return true
 		}

@@ -8,16 +8,16 @@
 import Foundation
 import InfraCore
 
-public protocol INetworkClient {
-	func fetch<T: Decodable>(_ request: INetworkRequest) async -> Result<T, NetworkError>
+public protocol INetworkClient: Sendable {
+	func fetch<T: Decodable & Sendable>(_ request: INetworkRequest) async -> Result<T, NetworkError>
 }
 
-public struct NetworkClient: INetworkClient {
+public struct NetworkClient: INetworkClient, Sendable {
 	private let requestBuilder: INetworkRequestBuilder
 	private let decoder: JSONDecoder
 	private let logger: LogManager
 
-	private var session: URLSession
+	private let session: URLSession
 
 	public init(session: URLSession, requestBuilder: INetworkRequestBuilder, logger: LogManager, decoder: JSONDecoder = JSONDecoder()) {
 		self.session = session
@@ -26,7 +26,7 @@ public struct NetworkClient: INetworkClient {
 		self.decoder = decoder
 	}
 
-	public func fetch<T: Decodable>(_ request: INetworkRequest) async -> Result<T, NetworkError> {
+	public func fetch<T: Decodable & Sendable>(_ request: INetworkRequest) async -> Result<T, NetworkError> {
 		let startTime = Date()
 
 		var urlRequest = requestBuilder.build(forRequest: request)
@@ -98,8 +98,6 @@ public struct NetworkClient: INetworkClient {
 
 	/// Returns a copy of the client that uses a different `URLSession`, useful for tests that swap in a mocked session.
 	public func copy(session newSession: URLSession) -> Self {
-		var apiClientCopy = self
-		apiClientCopy.session = newSession
-		return apiClientCopy
+		NetworkClient(session: newSession, requestBuilder: requestBuilder, logger: logger, decoder: decoder)
 	}
 }

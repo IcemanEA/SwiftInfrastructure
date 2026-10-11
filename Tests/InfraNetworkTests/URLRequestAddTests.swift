@@ -45,6 +45,18 @@ struct URLRequestAddTests {
 		#expect(array == [["a": 1], ["b": 2]])
 	}
 
+	@Test("add(body:) serializes nested Sendable values unchanged")
+	func nestedJsonBody() throws {
+		var request = makeRequest()
+
+		request.add(body: .json(["a": 1, "b": ["c": true], "d": [1, 2], "e": "text"]))
+
+		let body = try #require(request.httpBody)
+		let object = try #require(try JSONSerialization.jsonObject(with: body) as? NSDictionary)
+		let expected: NSDictionary = ["a": 1, "b": ["c": true], "d": [1, 2], "e": "text"]
+		#expect(object == expected)
+	}
+
 	@Test("add(body:) encodes form data as a query string")
 	func formDataBody() throws {
 		var request = makeRequest()

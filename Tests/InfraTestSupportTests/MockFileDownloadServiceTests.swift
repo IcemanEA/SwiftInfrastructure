@@ -54,11 +54,11 @@ struct MockFileDownloadServiceTests {
 		defer { cleanUp() }
 		let sut = makeService()
 		let localPath = directory.appendingPathComponent("report.pdf").path
-		let recorder = ProgressRecorder()
+		let recorder = LockedState<[Double]>([])
 
-		_ = await sut.downloadFile(from: remoteURL, to: localPath, progressHandler: { recorder.append($0) })
+		_ = await sut.downloadFile(from: remoteURL, to: localPath, progressHandler: { value in recorder.withLock { $0.append(value) } })
 
-		let values = recorder.values
+		let values = recorder.withLock { $0 }
 		try #require(!values.isEmpty, "The mock must report progress at least once")
 		#expect(values.allSatisfy { (0.0...1.0).contains($0) })
 		#expect(values.last == 1.0)
@@ -99,23 +99,5 @@ struct MockFileDownloadServiceTests {
 			Issue.record("Expected .taskNotFound, got \(result)")
 			return
 		}
-	}
-}
-
-/// Collects progress callbacks from the mock, which may arrive on any thread.
-private final class ProgressRecorder: @unchecked Sendable {
-	private let lock = NSLock()
-	private var storage: [Double] = []
-
-	var values: [Double] {
-		lock.lock()
-		defer { lock.unlock() }
-		return storage
-	}
-
-	func append(_ value: Double) {
-		lock.lock()
-		defer { lock.unlock() }
-		storage.append(value)
 	}
 }

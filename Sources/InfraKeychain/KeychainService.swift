@@ -8,7 +8,7 @@
 import Foundation
 import Security
 
-public struct KeychainService {
+public struct KeychainService: Sendable {
 	public func getSecret(service: String, account: String) -> String? {
 		let query = [
 			kSecAttrService: service,

@@ -10,7 +10,7 @@ import SwiftUI
 import UIKit
 
 /// PDF certificate generator implementation using UIKit for JPG templates
-public final class PdfCertificateGenerator: IPdfCertificateGenerator {
+public final class PdfCertificateGenerator: IPdfCertificateGenerator, Sendable {
 
 	// MARK: - Private Properties
 
@@ -18,7 +18,7 @@ public final class PdfCertificateGenerator: IPdfCertificateGenerator {
 
 	// MARK: - Initialization
 
-	/// - Parameter logger: логгер, в который генератор пишет предупреждения о подмене шрифта.
+	/// - Parameter logger: The sink for warnings about substituted fonts.
 	public init(logger: ILogger) {
 		self.logger = LogManager(logger: logger, category: .business)
 	}

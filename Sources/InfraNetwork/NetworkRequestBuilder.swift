@@ -8,7 +8,7 @@
 import Foundation
 
 /// A builder that assembles a `URLRequest` from an ``INetworkRequest``.
-public protocol INetworkRequestBuilder {
+public protocol INetworkRequestBuilder: Sendable {
 
 	/// The base URL against which each request's path is resolved.
 	var baseUrl: URL { get }
@@ -18,7 +18,7 @@ public protocol INetworkRequestBuilder {
 }
 
 /// A concrete request builder that composes a `URLRequest` from a domain `NetworkRequest` and optional credentials.
-public struct NetworkRequestBuilder: INetworkRequestBuilder {
+public struct NetworkRequestBuilder: INetworkRequestBuilder, Sendable {
 	/// The base URL of the service that receives requests built by this builder.
 	public let baseUrl: URL
 	private let token: AuthToken?

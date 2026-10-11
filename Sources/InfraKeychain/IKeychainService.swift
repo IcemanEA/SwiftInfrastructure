@@ -15,7 +15,7 @@
 /// implementation over `SecItem*`, and the package's tests substitute an
 /// in-memory store so repository behaviour can be verified without touching
 /// the system Keychain.
-protocol IKeychainService {
+protocol IKeychainService: Sendable {
 
 	/// Returns the secret stored for `service` and `account`, or `nil` if there is none.
 	func getSecret(service: String, account: String) -> String?

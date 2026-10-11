@@ -8,9 +8,9 @@
 import Foundation
 
 /// Request parameters — either absent, or carried in the URL as query items.
-public enum Parameters {
+public enum Parameters: Sendable {
 	/// No parameters.
 	case none
 	/// Parameters appended to the URL as query items; typically used with `GET`. Supplied as a dictionary.
-	case url([String: Any])
+	case url([String: any Sendable])
 }

@@ -9,7 +9,7 @@ import Foundation
 import os.log
 
 // MARK: - Logger Implementation
-public final class Logger: ILogger {
+public final class Logger: ILogger, Sendable {
 	
 	// MARK: - Properties
 	private let minimumLogLevel: LogLevel

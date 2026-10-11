@@ -10,7 +10,7 @@ import Foundation
 // MARK: - KeyCategory
 
 /// A grouping label applied to each ``UserDefaultsKey`` case.
-public enum KeyCategory: String, CaseIterable {
+public enum KeyCategory: String, CaseIterable, Sendable {
 
 	/// Application-level state and update markers.
 	case application = "application"
@@ -65,7 +65,7 @@ public enum KeyCategory: String, CaseIterable {
 /// // Record a sync timestamp.
 /// repository.setValue(Date().timeIntervalSince1970, for: .lastJwtSyncTime)
 /// ```
-public enum UserDefaultsKey: String, CaseIterable {
+public enum UserDefaultsKey: String, CaseIterable, Sendable {
 
 	/// Timestamp of the most recent application start, in seconds since the Unix epoch.
 	case lastAppStartTime = "last_app_start_time"

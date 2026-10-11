@@ -8,6 +8,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-10-12
+
+### Added
+
+- `InfraTestSupport`: `LockedState<Value>`, a `Sendable` lock-protected container for writing test doubles of protocols with synchronous requirements.
+- Test targets `InfraNotificationsTests` and `InfraFileCacheTests`.
+- `InfraNotifications`: `deviceToken(timeout:)` accepts `.infinity` to wait until a token arrives or the task is cancelled; a negative or NaN timeout does not wait.
+- `InfraFileCache`: `FileDownloadService.init` takes an optional `sessionConfiguration: URLSessionConfiguration = .default`, so tests can serve downloads through a custom `URLProtocol`.
+
+### Changed
+
+- **BREAKING** The package compiles in the Swift 6 language mode (`swiftLanguageModes: [.v6]`) and its public API is `Sendable`. Consumers in Swift 6 mode import every product without `@preconcurrency`. Consumers in Swift 5 mode are unaffected by the mode itself; the API changes below apply to both. Every public protocol now inherits `Sendable`, so your own types that conform to one — an `INetworkRequest`, an `ILogger`, an `IDatabaseMigrator`, a `MaskStringConvertible` credential wrapper, a hand-written test double — must be `Sendable` too: use value types or `let` properties of `Sendable` types, an actor, or `LockedState` in test code.
+- **BREAKING** `InfraCore`: `AppFileManager.init(fileManager:logger:)` is now `init(logger:)`; the service always uses `FileManager.default`, which is thread-safe. `FileManager` is not `Sendable`, so a stored instance would make the service non-`Sendable`. Remove the `fileManager:` argument.
+- **BREAKING** `InfraUserDefaults`: `UserDefaultsRepository.init(userDefaults:)` is now `init(suiteName: String? = nil)`; `nil` selects `UserDefaults.standard`. `UserDefaults` is not `Sendable`, so the repository keeps the suite name and resolves the store on each access. Replace `UserDefaultsRepository(userDefaults: UserDefaults(suiteName: "x")!)` with `UserDefaultsRepository(suiteName: "x")`; `UserDefaultsRepository()` is unchanged.
+- **BREAKING** `InfraDatabase`: `DatabaseService.init(logger:databaseName:bundleID:)` now `throws` and opens the database itself; `dbPool` is a non-optional `let`; `setup(with:)` is replaced by `migrate(with:) async throws`, which takes a non-optional migrator. Construct the service with `try`, call `try await service.migrate(with: migrator)` where `setup(with:)` was called, and remove `guard let dbPool` unwrapping. `IDatabaseService` and `IDatabaseMigrator` are `Sendable`, so a migrator must hold only `Sendable` state.
+- **BREAKING** `InfraNotifications`: `waitForDeviceToken(completion:)` is removed. Use `deviceToken(timeout:) async -> String?`, which returns the token, or `nil` on timeout or task cancellation, so a task group racing it against a timer can always finish; or iterate `deviceTokens()`, which yields the latest token and every change. `notifyTokenReceived(_:)` is now `async`: call it as `Task { await manager.notifyTokenReceived(token) }` from the app delegate.
+- **BREAKING** `InfraNotifications`: `NotificationManager.init(center:logger:)` is now `init(logger:)`; the manager uses `UNUserNotificationCenter.current()`, because the center is not `Sendable`. Remove the `center:` argument.
+- **BREAKING** `InfraFileCache`: `FileDownloadService` is an actor instead of an `NSObject` subclass, and `progressHandler` changes from `((Double) -> Void)?` to `(@Sendable (Double) -> Void)?`. The handler is now called on the service's executor, not on the main queue: hop to the main actor inside the handler before touching UI. A closure that captures non-`Sendable` state must be rewritten to capture only `Sendable` values.
+- **BREAKING** `InfraNetwork`: `HTTPBody.json`, `.formData`, `.jsonArray` and `Parameters.url` carry `[String: any Sendable]` (`[[String: any Sendable]]` for `jsonArray`) instead of `[String: Any]`. Change the annotation where a dictionary is built in a variable; literals passed inline compile unchanged. The serialized bytes are the same. `INetworkClient.fetch` requires `T: Decodable & Sendable`: make every response type you decode `Sendable`.
+- **BREAKING** `InfraTestSupport`: every mock is `Sendable`. `MockLogger`, `MockKeychainRepository`, `MockUserDefaultsRepository`, `MockNotificationManager` and `MockPdfCertificateGenerator` keep their API and keep their state in `LockedState`. `MockFileDownloadService` is an actor: `clearActiveDownloads()` and `activeDownloadCount` must be awaited. `MockNotificationManager` follows the new token API: `deviceToken(timeout:)` returns the last reported token or `deviceTokenResult` (default `"mock_device_token"`), and `reportedTokens` records every reported token.
+- `InfraFileCache`: a non-2xx response is reported as `.serverError(statusCode:)` with the actual HTTP status; previously the code was always `-1011`.
+
+### Fixed
+
+- `InfraFileCache`: `cancelDownload` now completes the waiting `downloadFile` caller with `.failure(.internalError)`; previously that caller never returned.
+- `InfraFileCache`: cancelling the task that awaits `downloadFile` or `resumeDownload` now releases that caller with `.failure(.internalError)`; the download goes on for any other caller, and `cancelDownload` still stops it. Previously the caller stayed suspended until the network finished.
+- `InfraFileCache`: a file that finishes moving into place while its download is being cancelled is removed, so a cancelled download leaves nothing behind.
+- `InfraFileCache`: `pauseDownload` no longer fails the waiting `downloadFile` caller. The caller keeps waiting, and `resumeDownload` continues the download (or restarts it when the server provided no resume data); both callers receive the final result. Previously a paused download could never be resumed. A `resumeDownload` call made while the pause is still in progress returns `.failure(.downloadInProgress)` instead of restarting from zero.
+
 ## [0.2.0] — 2026-10-07
 
 ### Added

@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import InfraTestSupport
 
 /// A `URLProtocol` that answers requests from per-path handlers instead of the network.
 ///
@@ -13,30 +14,23 @@ import Foundation
 /// as long as each uses a unique path.
 final class StubURLProtocol: URLProtocol {
 
-	enum Reply {
+	enum Reply: Sendable {
 		case response(URLResponse, Data)
 		case failure(Error)
 	}
 
-	private static let lock = NSLock()
-	nonisolated(unsafe) private static var handlers: [String: Reply] = [:]
+	private static let handlers = LockedState<[String: Reply]>([:])
 
 	static func register(path: String, reply: Reply) {
-		lock.lock()
-		defer { lock.unlock() }
-		handlers[path] = reply
+		handlers.withLock { $0[path] = reply }
 	}
 
 	static func unregister(path: String) {
-		lock.lock()
-		defer { lock.unlock() }
-		handlers.removeValue(forKey: path)
+		handlers.withLock { _ = $0.removeValue(forKey: path) }
 	}
 
 	private static func reply(for path: String) -> Reply? {
-		lock.lock()
-		defer { lock.unlock() }
-		return handlers[path]
+		handlers.withLock { $0[path] }
 	}
 
 	override class func canInit(with request: URLRequest) -> Bool {

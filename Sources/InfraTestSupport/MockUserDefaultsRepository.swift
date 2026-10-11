@@ -24,36 +24,29 @@ import InfraUserDefaults
 /// repository.setValue(true, for: .onboardingCompleted)
 /// #expect(repository.getBool(for: .onboardingCompleted) == true)
 /// ```
-public final class MockUserDefaultsRepository: IUserDefaultsRepository, @unchecked Sendable {
+public final class MockUserDefaultsRepository: IUserDefaultsRepository, Sendable {
 
-	private let lock = NSLock()
-	private var storage: [UserDefaultsKey: Any] = [:]
+	private let storage: LockedState<[UserDefaultsKey: Any]>
 
 	/// Creates the mock, optionally pre-seeded with values.
 	///
 	/// - Parameter values: Values to store before the first read, keyed by ``UserDefaultsKey``.
 	public init(values: [UserDefaultsKey: Any] = [:]) {
-		self.storage = values
+		self.storage = LockedState(values)
 	}
 
 	// MARK: - Generic Methods
 
 	public func getValue(for key: UserDefaultsKey) -> Any? {
-		lock.lock()
-		defer { lock.unlock() }
-		return storage[key] ?? key.defaultValue
+		storage.withLock { $0[key] ?? key.defaultValue }
 	}
 
 	public func setValue(_ value: Any?, for key: UserDefaultsKey) {
-		lock.lock()
-		defer { lock.unlock() }
-		storage[key] = value
+		storage.withLock { $0[key] = value }
 	}
 
 	public func removeValue(for key: UserDefaultsKey) {
-		lock.lock()
-		defer { lock.unlock() }
-		storage.removeValue(forKey: key)
+		storage.withLock { _ = $0.removeValue(forKey: key) }
 	}
 
 	// MARK: - Typed Methods
@@ -121,15 +114,11 @@ public final class MockUserDefaultsRepository: IUserDefaultsRepository, @uncheck
 	// MARK: - Utility Methods
 
 	public func hasValue(for key: UserDefaultsKey) -> Bool {
-		lock.lock()
-		defer { lock.unlock() }
-		return storage[key] != nil
+		storage.withLock { $0[key] != nil }
 	}
 
 	public func resetToDefaults() {
-		lock.lock()
-		defer { lock.unlock() }
-		storage.removeAll()
+		storage.withLock { $0.removeAll() }
 	}
 
 	public func synchronize() {
@@ -137,9 +126,7 @@ public final class MockUserDefaultsRepository: IUserDefaultsRepository, @uncheck
 	}
 
 	public func clearAllData() -> Bool {
-		lock.lock()
-		defer { lock.unlock() }
-		storage.removeAll()
+		storage.withLock { $0.removeAll() }
 		return true
 	}
 }

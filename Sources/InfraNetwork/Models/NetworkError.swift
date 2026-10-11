@@ -14,7 +14,7 @@ import Foundation
 /// Describes every failure mode that may arise during a network request. Cases
 /// are grouped by category so call sites can treat connectivity, HTTP status,
 /// auth, and decode problems differently.
-public enum NetworkError: Error {
+public enum NetworkError: Error, Sendable {
 
 	// MARK: - Connectivity errors
 

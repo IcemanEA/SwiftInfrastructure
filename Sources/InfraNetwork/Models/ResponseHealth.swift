@@ -8,7 +8,7 @@
 import Foundation
 
 /// The result of a server health-check probe.
-public struct ResponseHealth: Decodable {
+public struct ResponseHealth: Decodable, Sendable {
 	/// Whether the server is reachable and responding.
 	public let isOnline: Bool
 

@@ -8,7 +8,7 @@
 import Foundation
 
 /// A factory that dispatches to the appropriate ``IPdfCertificateGenerator`` based on the template's file extension.
-public final class CertificateGeneratorFactory {
+public final class CertificateGeneratorFactory: Sendable {
 
 	private let imageGenerator: IPdfCertificateGenerator
 	private let pdfGenerator: IPdfCertificateGenerator

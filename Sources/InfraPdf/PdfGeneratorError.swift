@@ -7,7 +7,7 @@
 
 import Foundation
 
-public enum PdfGeneratorError: LocalizedError {
+public enum PdfGeneratorError: LocalizedError, Sendable {
 	case templateImageNotFound(String)
 	case invalidTemplateImage
 	case pdfGenerationFailed

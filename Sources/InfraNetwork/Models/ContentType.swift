@@ -8,7 +8,7 @@
 import Foundation
 
 /// A MIME content type used for HTTP request bodies and `Content-Type` headers.
-public enum ContentType {
+public enum ContentType: Sendable {
 	/// JSON — `application/json`.
 	case json
 	/// Markdown text — `text/markdown`.
