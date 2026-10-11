@@ -226,7 +226,7 @@ public final class MockKeychainRepository: IKeychainRepository, Sendable {
 		}
 	}
 	
-	/// The number of state.tokens currently stored.
+	/// The number of tokens currently stored.
 	public var tokenCount: Int {
 		return state.withLock { state in
 			return state.tokens.count
@@ -268,7 +268,7 @@ public final class MockKeychainRepository: IKeychainRepository, Sendable {
 		}
 	}
 	
-	/// Prints the current state of the mock — stored state.tokens, call counts, and simulation flags — to the console.
+	/// Prints the current state of the mock — stored tokens, call counts, and simulation flags — to the console.
 	public func printCurrentState() {
 		state.withLock { state in
 			print("📊 MockRepo State:")

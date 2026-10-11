@@ -116,6 +116,7 @@ struct FileDownloadServiceTests {
 		let file = try result.get()
 		#expect(try Data(contentsOf: file) == body)
 		let values = reported.withLock { $0 }
+		try #require(!values.isEmpty)
 		#expect(values.allSatisfy { (0.0...1.0).contains($0) })
 	}
 
@@ -177,6 +178,51 @@ struct FileDownloadServiceTests {
 		#expect(await download.value == .success(expected))
 		#expect(try Data(contentsOf: expected) == Data("body".utf8))
 		#expect(StubDownloadProtocol.requestCount(path: url.path) == 2)
+	}
+
+	@Test("Cancelling the caller's task releases only that caller and the download goes on")
+	func callerCancellation() async throws {
+		let sandbox = try Sandbox()
+		defer { sandbox.cleanUp() }
+		let sut = makeSut()
+		let url = stub(.init(body: Data("body".utf8), delay: 0.5))
+		defer { StubDownloadProtocol.unregister(path: url.path) }
+		let localPath = sandbox.path("file.txt")
+
+		let start = Date()
+		let download = Task { await sut.downloadFile(from: url, to: localPath, progressHandler: nil) }
+		await sleep(0.1)
+		download.cancel()
+
+		#expect(await download.value == .failure(.internalError))
+		#expect(Date().timeIntervalSince(start) < 0.4)
+
+		// Загрузка продолжается без вызывающего и кладёт файл на место.
+		await sleep(1.0)
+		#expect(try Data(contentsOf: URL(fileURLWithPath: localPath)) == Data("body".utf8))
+		#expect(await sut.getDownloadProgress(url: url, localPath: localPath) == nil)
+	}
+
+	@Test("Resuming while the pause is still in progress is refused, and works once it completes")
+	func resumeDuringPause() async throws {
+		let sandbox = try Sandbox()
+		defer { sandbox.cleanUp() }
+		let sut = makeSut()
+		let url = stub(.init(body: Data("body".utf8), delay: 0.5))
+		defer { StubDownloadProtocol.unregister(path: url.path) }
+		let localPath = sandbox.path("file.txt")
+		let expected = URL(fileURLWithPath: localPath)
+
+		let download = Task { await sut.downloadFile(from: url, to: localPath, progressHandler: nil) }
+		await sleep(0.1)
+
+		async let pause = sut.pauseDownload(url: url, localPath: localPath)
+		async let earlyResume = sut.resumeDownload(url: url, localPath: localPath)
+		#expect(await earlyResume == .failure(.downloadInProgress))
+		#expect(error(of: await pause) == nil)
+
+		#expect(await sut.resumeDownload(url: url, localPath: localPath) == .success(expected))
+		#expect(await download.value == .success(expected))
 	}
 
 	@Test("Control calls for an unknown download report it as missing")

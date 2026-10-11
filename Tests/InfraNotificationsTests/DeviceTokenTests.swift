@@ -60,6 +60,19 @@ struct DeviceTokenTests {
 		#expect(elapsed < 1)
 	}
 
+	@Test("Infinite, huge, NaN and negative timeouts are accepted", arguments: [TimeInterval.infinity, 1e300, .nan, -1])
+	func extremeTimeouts(timeout: TimeInterval) async {
+		let sut = makeSut()
+
+		async let token = sut.deviceToken(timeout: timeout)
+		await sleep(0.05)
+		await sut.notifyTokenReceived("t1")
+
+		// NaN и отрицательное значение означают нулевой таймаут.
+		let result = await token
+		#expect(result == "t1" || (timeout.isNaN || timeout < 0) && result == nil)
+	}
+
 	@Test("Every concurrent waiter receives the token")
 	func severalWaiters() async {
 		let sut = makeSut()

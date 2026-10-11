@@ -64,7 +64,7 @@ actor DeviceTokenBroker {
 		return await withTaskCancellationHandler {
 			await withCheckedContinuation { continuation in
 				let timeoutTask = Task { [weak self] in
-					try? await Task.sleep(nanoseconds: UInt64(max(timeout, 0) * 1_000_000_000))
+					try? await Task.sleep(nanoseconds: Self.nanoseconds(from: timeout))
 					await self?.resolve(id, with: nil)
 				}
 				waiters[id] = Waiter(continuation: continuation, timeout: timeoutTask)
@@ -79,6 +79,15 @@ actor DeviceTokenBroker {
 				await self?.resolve(id, with: nil)
 			}
 		}
+	}
+
+	/// Converts a timeout in seconds to nanoseconds, treating NaN and negative values as zero
+	/// and clamping values too large for `UInt64` (including infinity) to the maximum.
+	private static func nanoseconds(from seconds: TimeInterval) -> UInt64 {
+		guard !seconds.isNaN, seconds > 0 else { return 0 }
+		let nanoseconds = seconds * 1_000_000_000
+		guard nanoseconds < Double(UInt64.max) else { return UInt64.max }
+		return UInt64(nanoseconds)
 	}
 
 	private func resolve(_ id: UUID, with token: String?) {

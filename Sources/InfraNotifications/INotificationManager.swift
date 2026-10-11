@@ -26,7 +26,8 @@ public protocol INotificationManager: Sendable {
 	/// call to ``notifyTokenReceived(_:)``. Returns `nil` when the timeout elapses first
 	/// or when the calling task is cancelled.
 	///
-	/// - Parameter timeout: The longest time to wait, in seconds.
+	/// - Parameter timeout: The longest time to wait, in seconds. `.infinity` waits until a
+	///   token arrives or the task is cancelled; a negative value or NaN does not wait.
 	/// - Returns: The token, or `nil` on timeout or cancellation.
 	func deviceToken(timeout: TimeInterval) async -> String?
 

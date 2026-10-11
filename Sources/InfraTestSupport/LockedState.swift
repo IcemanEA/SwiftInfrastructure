@@ -18,7 +18,9 @@ import Foundation
 /// unchecked conformance of its own.
 ///
 /// Do not let a reference to the value escape the closure passed to
-/// ``withLock(_:)``; copy what you need and return it.
+/// ``withLock(_:)``; copy what you need and return it. The lock is not
+/// reentrant: calling ``withLock(_:)`` on the same instance from inside its own
+/// closure, directly or through code it calls, deadlocks.
 ///
 /// ```swift
 /// final class RecordingStore: IKeyValueStore, Sendable {

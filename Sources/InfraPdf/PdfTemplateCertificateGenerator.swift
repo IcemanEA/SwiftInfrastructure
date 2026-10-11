@@ -21,7 +21,7 @@ public final class PdfTemplateCertificateGenerator: IPdfCertificateGenerator, Se
 
 	// MARK: - Initialization
 
-	/// - Parameter logger: логгер, в который генератор пишет предупреждения о подмене шрифта.
+	/// - Parameter logger: The sink for warnings about substituted fonts.
 	public init(logger: ILogger) {
 		self.logger = LogManager(logger: logger, category: .business)
 	}

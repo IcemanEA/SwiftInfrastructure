@@ -115,7 +115,7 @@ The package uses Swift Testing (`import Testing`). XCTest is not used. Each test
 | `InfraFileCacheTests` | `FileDownloadService` over a `URLProtocol` stub: concurrent and duplicate downloads, progress, HTTP errors, pause, resume and cancel |
 | `InfraTestSupportTests` | every `Mock*` in `InfraTestSupport`, and `LockedState` |
 
-`InfraDatabase`, `InfraFileCache` and `InfraNotifications` have no test target yet. Each needs an injectable dependency before it can be tested without touching Application Support, the network or the notification center.
+`InfraDatabase` has no test target yet: `DatabaseService` creates its file under Application Support, and the directory needs to become injectable before the service can be tested in a temporary directory.
 
 Run the suite from Xcode with Product → Test (⌘U) on the `SwiftInfrastructure-Package` scheme, or from the shell:
 

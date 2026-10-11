@@ -20,24 +20,39 @@ import InfraCore
 ///
 /// - `downloadFile` returns when the download finishes, fails or is cancelled.
 ///   A paused download keeps its callers waiting until it is resumed or cancelled.
-/// - `resumeDownload` continues from the server's resume data, or restarts the
-///   download when the server provided none; its caller and the original
+/// - Cancelling the task that awaits `downloadFile` or `resumeDownload` releases
+///   only that caller with ``FileDownloadError/internalError``; the download goes
+///   on for any other caller. Use `cancelDownload` to stop the download itself.
+/// - `resumeDownload` continues a download whose pause has completed, from the
+///   server's resume data, or restarts it when the server provided none. A call
+///   made while the pause is still in progress returns
+///   ``FileDownloadError/downloadInProgress``. Its caller and the original
 ///   `downloadFile` caller both receive the final result.
 /// - `cancelDownload` completes every waiting caller with
-///   ``FileDownloadError/internalError``.
+///   ``FileDownloadError/internalError``. A file that finishes moving into place
+///   at the same moment is removed.
 /// - `progressHandler` is called on the actor's executor, not on the main thread.
 public actor FileDownloadService: IFileDownloadService {
 
 	// MARK: - Вспомогательные типы
+
+	private enum Phase {
+		case running
+		/// `cancelByProducingResumeData()` has been called and has not returned yet.
+		case pausing
+		case paused
+	}
+
+	private typealias Waiter = CheckedContinuation<Result<URL, FileDownloadError>, Never>
 
 	private struct Download {
 		let url: URL
 		let localPath: String
 		let progressHandler: (@Sendable (Double) -> Void)?
 		var task: URLSessionDownloadTask
-		var isPaused = false
+		var phase = Phase.running
 		var resumeData: Data?
-		var waiters: [CheckedContinuation<Result<URL, FileDownloadError>, Never>] = []
+		var waiters: [UUID: Waiter] = [:]
 	}
 
 	// MARK: - Зависимости
@@ -115,36 +130,32 @@ public actor FileDownloadService: IFileDownloadService {
 		startEventLoopIfNeeded()
 
 		let task = makeTask(url: url, resumeData: nil, localPath: localPath)
-		return await withCheckedContinuation { continuation in
-			downloads[key] = Download(
-				url: url,
-				localPath: localPath,
-				progressHandler: progressHandler,
-				task: task,
-				waiters: [continuation]
-			)
-			task.resume()
-			logger.info("📥 Задача загрузки запущена для: \(url.absoluteString)")
-		}
+		downloads[key] = Download(url: url, localPath: localPath, progressHandler: progressHandler, task: task)
+		logger.info("📥 Задача загрузки запущена для: \(url.absoluteString)")
+
+		return await wait(for: key, starting: task)
 	}
 
 	public func pauseDownload(url: URL, localPath: String) async -> Result<Void, FileDownloadError> {
 		let key = makeKey(url: url, localPath: localPath)
 
-		guard var download = downloads[key] else {
+		guard let download = downloads[key] else {
 			return .failure(.taskNotFound)
 		}
-		guard !download.isPaused else {
+		guard download.phase == .running else {
 			return .success(())
 		}
 
 		// Помечаем паузу до отмены задачи, чтобы событие отмены не завершило ожидающих.
-		download.isPaused = true
-		downloads[key] = download
+		downloads[key]?.phase = .pausing
 
 		let resumeData = await download.task.cancelByProducingResumeData()
 
 		// Пока ждали данные, загрузка могла завершиться или быть отменена.
+		guard downloads[key]?.phase == .pausing else {
+			return .success(())
+		}
+		downloads[key]?.phase = .paused
 		downloads[key]?.resumeData = resumeData
 		logger.info("📥 Загрузка приостановлена: \(url.absoluteString)")
 		return .success(())
@@ -156,7 +167,7 @@ public actor FileDownloadService: IFileDownloadService {
 		guard var download = downloads[key] else {
 			return .failure(.noResumeData)
 		}
-		guard download.isPaused else {
+		guard download.phase == .paused else {
 			return .failure(.downloadInProgress)
 		}
 
@@ -164,15 +175,12 @@ public actor FileDownloadService: IFileDownloadService {
 
 		let task = makeTask(url: url, resumeData: download.resumeData, localPath: localPath)
 		download.task = task
-		download.isPaused = false
+		download.phase = .running
 		download.resumeData = nil
+		downloads[key] = download
+		logger.info("📥 Загрузка возобновлена: \(url.absoluteString)")
 
-		return await withCheckedContinuation { continuation in
-			download.waiters.append(continuation)
-			downloads[key] = download
-			task.resume()
-			logger.info("📥 Загрузка возобновлена: \(url.absoluteString)")
-		}
+		return await wait(for: key, starting: task)
 	}
 
 	public func cancelDownload(url: URL, localPath: String) async -> Result<Void, FileDownloadError> {
@@ -183,7 +191,7 @@ public actor FileDownloadService: IFileDownloadService {
 		}
 
 		download.task.cancel()
-		for waiter in download.waiters {
+		for waiter in download.waiters.values {
 			waiter.resume(returning: .failure(.internalError))
 		}
 
@@ -200,6 +208,39 @@ public actor FileDownloadService: IFileDownloadService {
 	/// Builds the stable key used to deduplicate concurrent downloads of the same `(url, localPath)` pair.
 	private func makeKey(url: URL, localPath: String) -> String {
 		"\(url.absoluteString)|\(localPath)"
+	}
+
+	/// Registers the caller, starts `task`, and suspends until the download under `key` completes
+	/// or the caller's task is cancelled.
+	///
+	/// The task starts only after the caller is registered, so even an instant completion finds it.
+	private func wait(for key: String, starting task: URLSessionDownloadTask) async -> Result<URL, FileDownloadError> {
+		let id = UUID()
+		return await withTaskCancellationHandler {
+			await withCheckedContinuation { continuation in
+				guard downloads[key] != nil else {
+					continuation.resume(returning: .failure(.internalError))
+					return
+				}
+				downloads[key]?.waiters[id] = continuation
+				task.resume()
+
+				// Отмена могла прийти до регистрации ожидающего.
+				if Task.isCancelled {
+					releaseWaiter(id, of: key)
+				}
+			}
+		} onCancel: {
+			Task { [weak self] in
+				await self?.releaseWaiter(id, of: key)
+			}
+		}
+	}
+
+	/// Completes one cancelled caller; the download itself continues.
+	private func releaseWaiter(_ id: UUID, of key: String) {
+		guard let waiter = downloads[key]?.waiters.removeValue(forKey: id) else { return }
+		waiter.resume(returning: .failure(.internalError))
 	}
 
 	/// Creates a session task whose description carries the destination path for the delegate.
@@ -222,6 +263,7 @@ public actor FileDownloadService: IFileDownloadService {
 	private func handle(_ event: DownloadEvent) {
 		guard let key = downloads.first(where: { $0.value.task.taskIdentifier == event.taskIdentifier })?.key,
 			  let download = downloads[key] else {
+			removeOrphanedFile(of: event)
 			return
 		}
 
@@ -234,20 +276,31 @@ public actor FileDownloadService: IFileDownloadService {
 			if case .success(let fileUrl) = result {
 				logger.info("📥 Загрузка успешно завершена: \(fileUrl.path)")
 			}
-			for waiter in download.waiters {
+			for waiter in download.waiters.values {
 				waiter.resume(returning: result)
 			}
 
 		case .failed(let error):
 			// Отмена задачи при паузе — не ошибка загрузки.
-			guard !download.isPaused else { return }
+			guard download.phase == .running else { return }
 
 			logger.error("📥 Загрузка завершилась с ошибкой: \(error)")
 			downloads[key] = nil
-			for waiter in download.waiters {
+			for waiter in download.waiters.values {
 				waiter.resume(returning: .failure(error))
 			}
 		}
+	}
+
+	/// Removes a file that a cancelled download moved into place after it was cancelled,
+	/// unless another download now targets the same path.
+	private func removeOrphanedFile(of event: DownloadEvent) {
+		guard case .finished(.success(let fileUrl)) = event.kind,
+			  !downloads.values.contains(where: { URL(fileURLWithPath: $0.localPath) == fileUrl }) else {
+			return
+		}
+		try? FileManager.default.removeItem(at: fileUrl)
+		logger.info("📥 Удален файл отмененной загрузки: \(fileUrl.path)")
 	}
 }
 
