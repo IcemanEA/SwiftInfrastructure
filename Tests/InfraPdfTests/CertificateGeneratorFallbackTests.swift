@@ -31,13 +31,13 @@ struct CertificateGeneratorFallbackTests {
 		logger.entries.filter { $0.level == .warning }
 	}
 
-	private func certificateData(fontName: String) -> CertificateData {
+	private func certificateData(fontNames: [String]) -> CertificateData {
 		CertificateData(textItems: [
 			CertificateTextItem(
 				text: "Jane Doe",
 				position: CGPoint(x: 100, y: 100),
 				fontSize: 24,
-				fontName: fontName,
+				fontNames: fontNames,
 				fontColor: "#000000"
 			)
 		])
@@ -76,7 +76,7 @@ struct CertificateGeneratorFallbackTests {
 
 		let output = try await sut.generateCertificate(
 			templateImagePath: template.path,
-			certificateData: certificateData(fontName: "NoSuchFont-Bold")
+			certificateData: certificateData(fontNames: ["NoSuchFont-Bold"])
 		)
 
 		#expect(!output.previewData.isEmpty)
@@ -93,7 +93,7 @@ struct CertificateGeneratorFallbackTests {
 
 		let output = try await sut.generateCertificate(
 			templateImagePath: template.path,
-			certificateData: certificateData(fontName: "NoSuchFont-Bold")
+			certificateData: certificateData(fontNames: ["NoSuchFont-Bold"])
 		)
 
 		#expect(!output.previewData.isEmpty)
@@ -107,7 +107,7 @@ struct CertificateGeneratorFallbackTests {
 		defer { cleanUp() }
 		let png = try writePngTemplate()
 		let pdf = try writePdfTemplate()
-		let data = certificateData(fontName: "NoSuchFont-Bold, Courier")
+		let data = certificateData(fontNames: ["NoSuchFont-Bold", "Courier"])
 
 		_ = try await PdfCertificateGenerator(logger: logger)
 			.generateCertificate(templateImagePath: png.path, certificateData: data)

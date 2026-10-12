@@ -18,7 +18,7 @@ struct CertificateDataTests {
 			fullName: "Jane Doe",
 			position: CGPoint(x: 10, y: 20),
 			fontSize: 48,
-			fontName: "Courier",
+			fontNames: ["Courier"],
 			fontColor: "#FF0000"
 		)
 
@@ -27,7 +27,7 @@ struct CertificateDataTests {
 		#expect(item.text == "Jane Doe")
 		#expect(item.position == CGPoint(x: 10, y: 20))
 		#expect(item.fontSize == 48)
-		#expect(item.fontName == "Courier")
+		#expect(item.fontNames == ["Courier"])
 		#expect(item.fontColor == "#FF0000")
 	}
 
@@ -37,7 +37,7 @@ struct CertificateDataTests {
 
 		let item = try #require(sut.textItems.first)
 		#expect(item.fontSize == 123)
-		#expect(item.fontName == "HelveticaNeue-Bold")
+		#expect(item.fontNames == ["HelveticaNeue-Bold"])
 		#expect(item.fontColor == "#000000")
 	}
 }

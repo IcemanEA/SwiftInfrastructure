@@ -118,7 +118,7 @@ public final class PdfCertificateGenerator: IPdfCertificateGenerator, Sendable {
 	}
 	
 	private func drawTextOverlay(in context: CGContext, imageSize: CGSize, textItem: CertificateTextItem) {
-		let font = CertificateFontResolver.resolve(fontName: textItem.fontName, size: textItem.fontSize, logger: logger)
+		let font = CertificateFontResolver.resolve(fontNames: textItem.fontNames, size: textItem.fontSize, logger: logger)
 		
 		let attributes: [NSAttributedString.Key: Any] = [
 			.font: font,

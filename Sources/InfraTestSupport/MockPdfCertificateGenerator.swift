@@ -13,14 +13,15 @@ import InfraPdf
 /// ## Overview
 ///
 /// Returns ``result`` from every call, or throws ``errorToThrow`` when it is
-/// set, and records the template paths it was called with. No rendering takes
-/// place.
+/// set, and records the template path and the certificate data of every call,
+/// in call order, including calls that throw. No rendering takes place.
 ///
 /// ```swift
 /// let generator = MockPdfCertificateGenerator()
 /// generator.result = (previewData: Data([1]), pdfData: Data([2]))
 /// let output = try await generator.generateCertificate(templateImagePath: "t.png", certificateData: data)
 /// #expect(generator.recordedTemplatePaths == ["t.png"])
+/// #expect(generator.recordedCertificateData.first?.textItems.first?.fontNames == ["Panton-SemiBold"])
 /// ```
 public final class MockPdfCertificateGenerator: IPdfCertificateGenerator, Sendable {
 
@@ -28,6 +29,7 @@ public final class MockPdfCertificateGenerator: IPdfCertificateGenerator, Sendab
 		var result: (previewData: Data, pdfData: Data) = (Data(), Data())
 		var error: Error?
 		var paths: [String] = []
+		var data: [CertificateData] = []
 	}
 
 	private let state = LockedState(State())
@@ -51,12 +53,18 @@ public final class MockPdfCertificateGenerator: IPdfCertificateGenerator, Sendab
 		state.withLock { $0.paths }
 	}
 
+	/// The certificate data passed to every call, in call order.
+	public var recordedCertificateData: [CertificateData] {
+		state.withLock { $0.data }
+	}
+
 	public func generateCertificate(
 		templateImagePath: String,
 		certificateData: CertificateData
 	) async throws -> (previewData: Data, pdfData: Data) {
 		let (result, error) = state.withLock { state in
 			state.paths.append(templateImagePath)
+			state.data.append(certificateData)
 			return (state.result, state.error)
 		}
 
