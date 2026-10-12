@@ -20,14 +20,14 @@ public struct CertificateData: Sendable {
 		fullName: String,
 		position: CGPoint,
 		fontSize: CGFloat = 123.0,
-		fontName: String = "HelveticaNeue-Bold",
+		fontNames: [String] = ["HelveticaNeue-Bold"],
 		fontColor: String?
 	) {
 		let textItem = CertificateTextItem(
 			text: fullName,
 			position: position,
 			fontSize: fontSize,
-			fontName: fontName,
+			fontNames: fontNames,
 			fontColor: fontColor
 		)
 		self.textItems = [textItem]

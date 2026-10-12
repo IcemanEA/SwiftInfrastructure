@@ -219,17 +219,22 @@ let factory = CertificateGeneratorFactory(
 let templateURL = Bundle.main.url(forResource: "certificate", withExtension: "jpg")!
 let generator = factory.getGenerator(for: templateURL)
 
-let data = CertificateData(
-    templateURL: templateURL,
-    items: [/* CertificateTextItem… */]
-)
+let data = CertificateData(textItems: [
+    CertificateTextItem(
+        text: "Jane Doe",
+        position: CGPoint(x: 600, y: 420),
+        fontSize: 64,
+        fontNames: ["Montserrat-Bold", "HelveticaNeue-Bold"],
+        fontColor: "#1A1A1A"
+    )
+])
 let (preview, pdf) = try await generator.generateCertificate(
     templateImagePath: templateURL.path,
     certificateData: data
 )
 ```
 
-`fontName` of a `CertificateTextItem` accepts a comma-separated list of PostScript names in priority order, for example `"Montserrat-Bold, HelveticaNeue-Bold"`. The first installed name is used. When none is installed the item is drawn with the system font and a warning with the original value is logged, so the certificate never loses a field because of a misconfigured font.
+`fontNames` of a `CertificateTextItem` is an ordered list of PostScript names in priority order. The first installed name is used. When none is installed, or the list is empty, the item is drawn with the system font and a warning listing every entry is logged, so the certificate never loses a field because of a misconfigured font. For compatibility with older data, an entry that contains commas, such as `"Montserrat-Bold, HelveticaNeue-Bold"`, is still split into separate names.
 
 ### InfraFileCache — download with progress
 

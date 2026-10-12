@@ -146,7 +146,7 @@ public final class PdfTemplateCertificateGenerator: IPdfCertificateGenerator, Se
 		context: CGContext,
 		textItem: CertificateTextItem
 	) {
-		let font = CertificateFontResolver.resolve(fontName: textItem.fontName, size: textItem.fontSize, logger: logger)
+		let font = CertificateFontResolver.resolve(fontNames: textItem.fontNames, size: textItem.fontSize, logger: logger)
 
 		// Text attributes
 		let paragraphStyle = NSMutableParagraphStyle()

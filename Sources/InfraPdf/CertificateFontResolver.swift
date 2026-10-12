@@ -10,30 +10,33 @@ import UIKit
 
 /// Подбирает шрифт для текстового поля сертификата.
 ///
-/// `fontName` трактуется как список PostScript-имён через запятую в порядке приоритета.
-/// Берётся первое имя, которое система смогла загрузить. Если не нашлось ни одного,
-/// возвращается системный шрифт и в лог пишется предупреждение с исходной строкой.
+/// Вход — упорядоченный список PostScript-имён по приоритету. Берётся первое имя,
+/// которое система смогла загрузить. Если не нашлось ни одного, возвращается системный
+/// шрифт и в лог пишется предупреждение со всеми элементами списка без изменений.
+///
+/// Запятая внутри элемента списка — наследие старых данных, а не контракт: такой элемент
+/// разрезается по запятым, как раньше разрезалась вся строка с именем шрифта.
 enum CertificateFontResolver {
 
 	/// Возвращает первый доступный шрифт из списка или системный шрифт запрошенного размера.
 	/// - Parameters:
-	///   - fontName: одно PostScript-имя или список имён через запятую.
+	///   - fontNames: PostScript-имена по приоритету; элемент с запятыми трактуется как несколько имён подряд.
 	///   - size: размер шрифта в пунктах.
 	///   - logger: логгер для предупреждения о подмене.
-	static func resolve(fontName: String, size: CGFloat, logger: LogManager) -> UIFont {
-		for candidate in candidates(in: fontName) {
+	static func resolve(fontNames: [String], size: CGFloat, logger: LogManager) -> UIFont {
+		for candidate in fontNames.flatMap(candidates(in:)) {
 			if let font = UIFont(name: candidate, size: size) {
 				return font
 			}
 		}
 
-		logger.warning("Font not found for fontName \"\(fontName)\", using system font")
+		logger.warning("Font not found for fontNames \(fontNames), using system font")
 		return UIFont.systemFont(ofSize: size)
 	}
 
-	/// Разбивает строку по запятым, обрезает пробелы и отбрасывает пустые элементы.
-	static func candidates(in fontName: String) -> [String] {
-		fontName
+	/// Разбивает элемент списка по запятым, обрезает пробелы и отбрасывает пустые части.
+	static func candidates(in entry: String) -> [String] {
+		entry
 			.split(separator: ",", omittingEmptySubsequences: true)
 			.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
 			.filter { !$0.isEmpty }

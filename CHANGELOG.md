@@ -8,6 +8,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-10-13
+
+### Added
+
+- `InfraTestSupport`: `MockPdfCertificateGenerator.recordedCertificateData` holds the `CertificateData` of every call in call order, including calls that throw, so a test can check which font list reached the generator.
+
+### Changed
+
+- **BREAKING** `InfraPdf`: `CertificateTextItem.fontName: String` is replaced by `fontNames: [String]`, an ordered list of PostScript names in priority order; the default is `["HelveticaNeue-Bold"]`. The `fontName:` parameter of `CertificateTextItem.init` and of the `CertificateData(fullName:position:fontSize:fontName:fontColor:)` convenience initializer becomes `fontNames:`. Migrate `fontName: "A"` to `fontNames: ["A"]`, and `fontName: "A, B"` to `fontNames: ["A", "B"]`. An entry that still contains commas is split into separate names, so passing `[legacyString]` unchanged keeps rendering as before; an empty list is drawn with the system font.
+- **BREAKING** `InfraPdf`: the system-font fallback warning now prints the whole `fontNames` list as an array (`Font not found for fontNames ["A, B", "C"], using system font`) instead of the single `fontName` string. Update any log filter or alert that matches the old `Font not found for fontName "…"` text.
+
 ## [0.3.0] — 2026-10-12
 
 ### Added
